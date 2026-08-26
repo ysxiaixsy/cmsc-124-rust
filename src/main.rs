@@ -17,7 +17,7 @@ fn main(){
     let filepath = &args[1];
 
     let contents = fs::read_to_string(filepath).
-    unwrap_or_else(|error| fail("Failed to read file: {}"));
+    unwrap_or_else(|error| fail(&format!("Failed to read file: {}", error)));
 
     print!("{contents}");
 }
