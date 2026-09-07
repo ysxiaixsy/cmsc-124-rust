@@ -1,0 +1,5 @@
+{
+  "ext": ".trap",
+  "flag": "--tokenize",
+  "mode": "sidecar"
+}
