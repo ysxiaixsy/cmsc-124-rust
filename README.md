@@ -1,4 +1,4 @@
-# [Language name]
+# TrapScript
 
 ## Creators
 
@@ -7,15 +7,14 @@
 
 ## Overview
 
-[One paragraph: what the language is for, who would use it, what writing it
-feels like.]
+TrapScript is a dynamically typed scripting language styled on internet slang, distinguished by a pipeline-chaining operator (>>) that lets a value be threaded through a sequence of transformations and function calls without ugly nested calls or intermediate variables.
+
 
 ## Host language and build
 
-- Host language: [language and version]
-- Version metadata: [file that pins it, e.g. rust-toolchain.toml, go.mod]
+- Host language: Rust 1.98
+- Version metadata: rust-toolchain.toml
 - Build: `./build.sh`
-- [Anything a fresh clone needs to know.]
 
 ## Running it
 
@@ -33,16 +32,27 @@ Exit codes: 0 [when], 65 [when], 70 [when].
 
 ## File extension
 
-`[.ext]` [Must match the `ext` field in every tests/lab*/manifest.json.]
+`[.trap]`
 
 ## Lexical structure
 
 ### Keywords
 
-
 | Keyword | Purpose |
 |---|---|
-| [word] | [what it does] |
+| `ong` | if |
+| `wait` | else if |
+| `nah` | else |
+| `spin` | while / for |
+| `hold` | let / var |
+| `locked` | const |
+| `motion` | function |
+| `pause` | break |
+| `typeshi` | return |
+| `spittin` | print |
+| `cap` | boolean false |
+| `nocap` | boolean true |
+| [TODO] | null / nil |
 
 
 ### Operators
@@ -50,7 +60,18 @@ Exit codes: 0 [when], 65 [when], 70 [when].
 
 | Operator | Category | Operands | Associativity | Precedence |
 |---|---|---|---|---|
-| [op] | [arithmetic, comparison, logical, assignment, other] | [unary or binary] | [left, right, none] | [1 = loosest] |
+| `=` | assignment | binary | right | 1 |
+| `==` | comparison | binary | left | 2 |
+| `!=` | comparison | binary | left | 2 |
+| `<` | comparison | binary | left | 2 |
+| `<=` | comparison | binary | left | 2 |
+| `>` | comparison | binary | left | 2 |
+| `>=` | comparison | binary | left | 2 |
+| `+` | arithmetic | binary | left | 3 |
+| `-` | arithmetic | binary/unary | left | 3 |
+| `*` | arithmetic | binary | left | 4 |
+| `/` | arithmetic | binary | left | 4 |
+| `>>` | pipeline | binary | left | [TODO — where does chaining sit relative to arithmetic?] |
 
 
 ### Literals
@@ -66,25 +87,24 @@ Exit codes: 0 [when], 65 [when], 70 [when].
 
 ### Identifiers
 
-- Start characters: [which]
-- Continue characters: [which]
-- Case-sensitive: [yes or no]
-- [Reserved patterns, length limits, or other restrictions.]
+- Start characters: letters, underscore
+- Continue characters: letters, digits, underscore
+- Case-sensitive: yes
 
 ### Comments
 
-- Line comments: [token]
-- Block comments: [tokens, or "not supported"]
-- Nesting: [supported or not]
+- Line comments: `//`
+- Block comments: not supported
+- Nesting: not supported
 - [Harness note: comment_prefix in tests/lab*/manifest.json is set to the
   token above.]
 
 ## Whitespace and termination
 
-- Whitespace significant: [yes or no, and where]
-- Statement terminator: [e.g. semicolon, newline, none]
-- Block delimiters: [e.g. braces, indentation]
-- Grouping delimiters: [e.g. parentheses]
+- Whitespace significant: No. `>>` is the explicit step separator regardless of line breaks. Newlines are treated as standard whitespace, allowing pipeline chains to be written on a single line or split across multiple lines for readability.
+- Statement terminator: newline `\n`
+- Block delimiters: curly braces `{}`
+- Grouping delimiters: parentheses `()`
 
 ## Token output format
 
@@ -216,9 +236,15 @@ Output:
 
 ## Design rationale
 
-[Why the language is the way it is. Cover the choices that surprised you, the
-features you cut, and the decisions you reversed. Specific reasons, not
-approval of your own work.]
+**Vocabulary.** We chose internet/social-media slang over a
+generic keyword set (`if`, `else`, `var`) because we wanted something fun and recognizable--that if you saw the keywords you'd immediately know it's TrapScript. Though, this trades familiarity for personality, a newcomer(in the sense that they came from a different programming language) can't guess that `hold` means variable declaration the way they could
+guess `var`, but this tradeoff is worth it because personality creates identity. Standard syntax is sterile and forgettable, but TrapScript turns writing code into an expressive, culturally distinct experience. Once you learn the slang logic, like "holding" a variable or putting a function into "motion," the syntax becomes natural and memorable. The slight learning curve gives TrapScript a unique soul instead of just being another generic Python clone.
+
+**The pipeline operator (`>>`).** Most C-family languages express a
+sequence of operations through nested function calls or reassignment
+(`f(g(h(x)))` or repeated `x = ...`). We introduced `>>` so a value can be
+threaded through a chain of transformations top-to-bottom, read in the
+order they execute, without intermediate variables. This was inspired by Unix shell pipes (`|`), modern functional pipeline operators (like Elixir's `|>`), and the internet's greentext format (`>`), where events are chained line-by-line in chronological order. Combined with the real-life concept of moving product through a chain of processing spots, passing data left-to-right (`>>`) makes complex data flows far easier to write, read, and debug.
 
 ## Known limitations
 
@@ -230,4 +256,4 @@ approval of your own work.]
 
 | Activity | What changed in the language |
 |---|---|
-| Lab 1 | [entry] |
+| Lab 1 | Initial token vocabulary and keyword set defined; pipeline operator (`>>`) introduced for chained method/operator calls. |
