@@ -1,2 +1,30 @@
-var greeting = "hello"
-print greeting
+hold x = 5
+hold y = 3.14
+locked name = "trap lang"
+
+motion add(a, b) {
+    typeshi a + b
+}
+
+ong (x == 5) {
+    spittin "x is five"
+} wait (x > 3) {
+    spittin "x is bigger than three"
+} nah {
+    spittin "fallback case"
+}
+
+spin (x != 0) {
+    x = x - 1
+    ong (x <= 0) {
+        pause
+    }
+}
+
+hold flag = true
+hold other = false
+hold check = !flag
+
+ong (x >= 1 y < 10) {
+    spittin "combo check"
+}

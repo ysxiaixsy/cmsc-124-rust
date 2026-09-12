@@ -14,6 +14,7 @@ pub enum Tokentypes {
     RightBrace,
     LeftParen,
     RightParen,
+    Comma,
     Identifier,
     Not,
     Slash,
