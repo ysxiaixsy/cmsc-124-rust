@@ -375,7 +375,7 @@ Token {
 }
 Token {
     token_type: True,
-    lexeme: "true",
+    lexeme: "nocap",
     line: 24,
 }
 Token {
@@ -395,7 +395,7 @@ Token {
 }
 Token {
     token_type: False,
-    lexeme: "false",
+    lexeme: "cap",
     line: 25,
 }
 Token {

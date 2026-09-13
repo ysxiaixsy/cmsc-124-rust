@@ -21,8 +21,8 @@ spin (x != 0) {
     }
 }
 
-hold flag = true
-hold other = false
+hold flag = nocap
+hold other = cap
 hold check = !flag
 
 ong (x >= 1 y < 10) {
