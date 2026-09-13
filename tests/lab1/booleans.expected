@@ -1,0 +1,65 @@
+Token {
+    token_type: Hold,
+    lexeme: "hold",
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "yes",
+    line: 1,
+}
+Token {
+    token_type: Equal,
+    lexeme: "=",
+    line: 1,
+}
+Token {
+    token_type: True,
+    lexeme: "nocap",
+    line: 1,
+}
+Token {
+    token_type: Hold,
+    lexeme: "hold",
+    line: 2,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "no",
+    line: 2,
+}
+Token {
+    token_type: Equal,
+    lexeme: "=",
+    line: 2,
+}
+Token {
+    token_type: False,
+    lexeme: "cap",
+    line: 2,
+}
+Token {
+    token_type: Hold,
+    lexeme: "hold",
+    line: 3,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "capital",
+    line: 3,
+}
+Token {
+    token_type: Equal,
+    lexeme: "=",
+    line: 3,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "nocapper",
+    line: 3,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    line: 3,
+}
