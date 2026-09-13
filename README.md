@@ -12,7 +12,7 @@ TrapScript is a dynamically typed scripting language styled on internet slang, d
 
 ## Host language and build
 
-- Host language: Rust 1.98
+- Host language: Rust 1.97.1
 - Version metadata: rust-toolchain.toml
 - Build: `./build.sh`
 
@@ -28,11 +28,11 @@ TrapScript is a dynamically typed scripting language styled on internet slang, d
 | `./run` | [Starts the REPL.] |
 
 
-Exit codes: 0 [when], 65 [when], 70 [when].
+Exit codes: `0` when the file scans cleanly, `65` when the scanner rejects the file (an unexpected character or an unterminated string), `70` for runtime errors (not used until Lab 3).
 
 ## File extension
 
-`[.trap]`
+`.trap`
 
 ## Lexical structure
 
@@ -71,29 +71,35 @@ Exit codes: 0 [when], 65 [when], 70 [when].
 | `-` | arithmetic | binary/unary | left | 3 |
 | `*` | arithmetic | binary | left | 4 |
 | `/` | arithmetic | binary | left | 4 |
+| `!` | logical | unary | right | [TODO — Lab 2] |
 | `>>` | pipeline | binary | left | [TODO — where does chaining sit relative to arithmetic?] |
 
+### Punctuation
+
+| Symbol | Purpose |
+|---|---|
+| `,` | separates function parameters and call arguments |
 
 ### Literals
 
 
 | Kind | Syntax | Produces |
 |---|---|---|
-| [number] | [e.g. 42, 3.14] | [what runtime value] |
-| [string] | [e.g. "hello", escapes supported] | [what runtime value] |
-| [boolean] | [true, false] | [what runtime value] |
+| number | `42`, `3.14`. A trailing dot (`1.`) is allowed; a leading dot (`.5`) is an error. | an integer for `42`, a decimal for `3.14` and `1.` |
+| string | `"hello"`. Can span multiple lines. No escape sequences: a backslash is a normal character, so `\"` ends the string. | the text between the quotes |
+| boolean | `nocap`, `cap` | `nocap` is true, `cap` is false |
 | [nil] | [spelling] | [what runtime value] |
 
 
 ### Identifiers
 
-- Start characters: letters, underscore
-- Continue characters: letters, digits, underscore
+- Start characters: any Unicode letter (so `café` is valid), or underscore
+- Continue characters: any Unicode letter or number (so `x²` is valid), or underscore
 - Case-sensitive: yes
 
 ### Comments
 
-- Line comments: `//`
+- Mid-line comments: allowed. Everything from `//` to the end of the line is ignored, so a comment can follow code.
 - Block comments: not supported
 - Nesting: not supported
 - [Harness note: comment_prefix in tests/lab*/manifest.json is set to the
