@@ -1,5 +1,8 @@
-use std::{env, fs, process};
+mod tokens;
+mod tokenizer;
 
+use std::{env, fs, process};
+use tokenizer::tokenizer;
 
 fn fail(message: &str) -> ! {
     eprintln!("lab 0 error: {}", message);
@@ -7,17 +10,22 @@ fn fail(message: &str) -> ! {
 }
 
 
+
 fn main(){
     let args = env::args().collect::<Vec<String>>();
 
-    if args.len() != 2 {
-        fail("Usage: lab0 <source-file>");
+    if args.len() != 3 || args[1] != "--tokenize" {
+        fail("Usage: ./run --tokenize <source-file>");
     }
 
-    let filepath = &args[1];
+    let filepath = &args[2];
 
     let contents = fs::read_to_string(filepath).
     unwrap_or_else(|error| fail(&format!("Failed to read file: {}", error)));
+    let tokens = tokenizer(contents);
 
-    print!("{contents}");
+    // should print token stream
+    for token in tokens {
+        println!("{:#?}", token);
+    }
 }

@@ -1,0 +1,3 @@
+hold yes = nocap
+hold no = cap
+hold capital = nocapper
