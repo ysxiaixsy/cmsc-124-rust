@@ -263,8 +263,12 @@ order they execute, without intermediate variables. This was inspired by Unix sh
 
 ## Known limitations
 
-- [What doesn't work, what is unimplemented, where behavior is worse than you
-  would like.]
+- `>>` is not scanned yet: it comes out as two `>` tokens.
+- `//` comments are not skipped yet: `/` always scans as division.
+- `true` and `false` still scan as booleans alongside `nocap` and `cap`.
+- `./run` with no arguments does not start a REPL yet.
+- The scanner stops at the first error instead of reporting every error in the file.
+- Tokens do not carry a literal value yet.
 
 ## Changelog
 
