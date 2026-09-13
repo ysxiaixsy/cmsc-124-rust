@@ -108,7 +108,7 @@ Exit codes: `0` when the file scans cleanly, `65` when the scanner rejects the f
 ## Whitespace and termination
 
 - Whitespace significant: No. `>>` is the explicit step separator regardless of line breaks. Newlines are treated as standard whitespace, allowing pipeline chains to be written on a single line or split across multiple lines for readability.
-- Statement terminator: newline `\n`
+- Statement terminator: none. Newlines are whitespace, so statement boundaries come from the grammar, not line breaks.
 - Block delimiters: curly braces `{}`
 - Grouping delimiters: parentheses `()`
 
