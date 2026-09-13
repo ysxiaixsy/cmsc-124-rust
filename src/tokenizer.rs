@@ -102,6 +102,8 @@ pub fn tokenizer(input: String) -> Vec<Token> {
                     "typeshi" => Tokentypes::Typeshi,
                     "true"    => Tokentypes::True,
                     "false"   => Tokentypes::False,
+                    "nocap"   => Tokentypes::True,
+                    "cap"     => Tokentypes::False,
                     _         => Tokentypes::Identifier,
                 };
                 tokens.push(Token { token_type, lexeme, line });
