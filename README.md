@@ -226,7 +226,8 @@ lab 0 error: Unterminated string starting on line 1
 
 
 ```
-[specific tests]...
+tests/lab1/keywords.trap   every keyword in real code, with identifiers, numbers, strings, and operators
+tests/lab1/booleans.trap   nocap and cap scan as booleans; capital and nocapper stay identifiers
 ```
 
 Run locally with:
