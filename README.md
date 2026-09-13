@@ -115,11 +115,20 @@ Exit codes: `0` when the file scans cleanly, `65` when the scanner rejects the f
 ## Token output format
 
 ```
-[one line of real --tokenize output]
+Token {
+    token_type: Hold,
+    lexeme: "hold",
+    line: 1,
+}
 ```
 
-[What each field means. Frozen as of Lab 1; changes are recorded in the
-changelog.]
+Each token prints in Rust's pretty debug format (`{:#?}`), five lines per token:
+
+- `token_type`: the token's category, such as `Hold`, `Identifier`, or `Num`
+- `lexeme`: the token's source text; for a string, the text between the quotes
+- `line`: the line the token starts on
+
+Frozen as of Lab 1; changes are recorded in the changelog.
 
 ## Grammar
 
@@ -192,14 +201,14 @@ true.]
 Message format:
 
 ```
-[one real static error]
-[one real runtime error]
+lab 0 error: Unexpected character '@' on line 1
+lab 0 error: Unterminated string starting on line 1
 ```
 
 
 | Failure | Exit code |
 |---|---|
-| [lexical error] | 65 |
+| lexical error: unexpected character or unterminated string | 65 |
 | [syntax error] | 65 |
 | [runtime error] | 70 |
 
