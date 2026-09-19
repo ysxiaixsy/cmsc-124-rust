@@ -1,0 +1,70 @@
+Token {
+    token_type: Motion,
+    lexeme: "motion",
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "add",
+    line: 1,
+}
+Token {
+    token_type: LeftParen,
+    lexeme: "(",
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "a",
+    line: 1,
+}
+Token {
+    token_type: Comma,
+    lexeme: ",",
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "b",
+    line: 1,
+}
+Token {
+    token_type: RightParen,
+    lexeme: ")",
+    line: 1,
+}
+Token {
+    token_type: LeftBrace,
+    lexeme: "{",
+    line: 1,
+}
+Token {
+    token_type: Typeshi,
+    lexeme: "typeshi",
+    line: 2,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "a",
+    line: 2,
+}
+Token {
+    token_type: Plus,
+    lexeme: "+",
+    line: 2,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "b",
+    line: 2,
+}
+Token {
+    token_type: RightBrace,
+    lexeme: "}",
+    line: 3,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    line: 3,
+}

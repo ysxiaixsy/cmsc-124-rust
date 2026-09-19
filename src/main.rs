@@ -22,10 +22,16 @@ fn main(){
 
     let contents = fs::read_to_string(filepath).
     unwrap_or_else(|error| fail(&format!("Failed to read file: {}", error)));
-    let tokens = tokenizer(contents);
+    let result = tokenizer(contents);
 
+    if !result.errors.is_empty(){
+        for error in result.errors {
+            eprintln!("Error: {}", error);
+        }
+        process::exit(65)
+    }
     // should print token stream
-    for token in tokens {
+    for token in result.tokens {
         println!("{:#?}", token);
     }
 }

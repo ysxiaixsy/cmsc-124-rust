@@ -1,7 +1,16 @@
 use crate::tokens::{Token, Tokentypes};
 
+pub struct ScanResult {
+    pub tokens: Vec<Token>,
+    pub errors: Vec<String>,
+}
 
-pub fn tokenizer(input: String) -> Vec<Token> {
+
+
+
+
+pub fn tokenizer(input: String) -> ScanResult {
+    let mut errors: Vec<String> = Vec::new();
     let mut tokens: Vec<Token> = Vec::new();
     let chars: Vec<char> = input.chars().collect();
     let mut i = 0;
@@ -58,7 +67,7 @@ pub fn tokenizer(input: String) -> Vec<Token> {
                     i += 1;
                 }
                 if i >= chars.len() {
-                    crate::fail(&format!("Unterminated string starting on line {}", start_line));
+                    errors.push(format!("Unterminated string starting on line {}", start_line));
                 }
                 i += 1; // skip closing quote
                 tokens.push(Token { token_type: Tokentypes::String, lexeme, line: start_line });
@@ -99,7 +108,7 @@ pub fn tokenizer(input: String) -> Vec<Token> {
                     "spittin" => Tokentypes::Spittin,
                     "motion"  => Tokentypes::Motion,
                     "pause"   => Tokentypes::Pause,
-                    "typeshi" => Tokentypes::Typeshi,
+                    "typeshi" => Tokentypes::Typeshi, 
                     "true"    => Tokentypes::True,
                     "false"   => Tokentypes::False,
                     _         => Tokentypes::Identifier,
@@ -108,11 +117,14 @@ pub fn tokenizer(input: String) -> Vec<Token> {
             }
 
             _ => {
-                crate::fail(&format!("Unexpected character '{}' on line {}", c, line));
+                errors.push(format!(
+                    "Unexpected character '{}' on line {}", c, line
+                ));
+                i += 1;
             }
         }
     }
 
     tokens.push(Token { token_type: Tokentypes::Eof, lexeme: String::new(), line });
-    tokens
+    ScanResult { tokens, errors }
 }

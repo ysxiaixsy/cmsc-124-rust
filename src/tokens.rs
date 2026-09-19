@@ -44,3 +44,4 @@ pub struct Token {
     pub lexeme: String,
     pub line: usize,
 }
+

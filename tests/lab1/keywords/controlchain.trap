@@ -1,0 +1,7 @@
+ong (x == 5) {
+    spittin "x is five"
+} wait (x > 3) {
+    spittin "x is bigger than three"
+} nah {
+    spittin "fallback case"
+}

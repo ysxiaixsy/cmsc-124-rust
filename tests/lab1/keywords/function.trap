@@ -1,0 +1,3 @@
+motion add(a, b) {
+    typeshi a + b
+}
