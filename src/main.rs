@@ -104,7 +104,7 @@ fn read_entry() -> Option<String> {
 
         let mut line = String::new();
         match io::stdin().read_line(&mut line) {
-            // 0 bytes means the input closed (Ctrl+D): scan what was typed, or stop if nothing was
+            // 0 bytes means the input closed (Ctrl+C): scan what was typed, or stop if nothing was
             Ok(0) => return if lines.is_empty() { None } else { Some(lines.join("\n")) },
             Ok(_) => {}
             Err(error) => {
