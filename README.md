@@ -226,8 +226,22 @@ Error: Unterminated string starting on line 3
 
 
 ```
-tests/lab1/keywords.trap   every keyword in real code, with identifiers, numbers, strings, and operators
-tests/lab1/booleans.trap   nocap and cap scan as booleans; capital and nocapper stay identifiers
+tests/lab1/booleans.trap               nocap and cap scan as booleans; capital and nocapper stay identifiers
+tests/lab1/keywords/keywords.trap      every keyword together in one program
+tests/lab1/keywords/blanklines.trap    blank lines between code keep line numbers right
+tests/lab1/keywords/conditional.trap   ong with >= and < and a string
+tests/lab1/keywords/controlchain.trap  an ong / wait / nah chain
+tests/lab1/keywords/dec.trap           a decimal number
+tests/lab1/keywords/false.trap         the false keyword
+tests/lab1/keywords/function.trap      a motion definition with parameters and typeshi
+tests/lab1/keywords/idwithkey.trap     holder, ongoing, and spinner stay identifiers, not keywords
+tests/lab1/keywords/int.trap           an integer
+tests/lab1/keywords/nested.trap        a spin loop with a nested ong and pause
+tests/lab1/keywords/not.trap           ! before an identifier
+tests/lab1/keywords/ong.trap           a single ong block with ==
+tests/lab1/keywords/str.trap           locked with a string literal
+tests/lab1/keywords/true.trap          the true keyword
+tests/lab1/errors/errors.trap          an unexpected character and an unterminated string; exits 65
 ```
 
 Run locally with:
