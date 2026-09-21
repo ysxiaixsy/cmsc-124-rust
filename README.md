@@ -201,8 +201,8 @@ true.]
 Message format:
 
 ```
-lab 0 error: Unexpected character '@' on line 1
-lab 0 error: Unterminated string starting on line 1
+Error: Unexpected character '@' on line 2
+Error: Unterminated string starting on line 3
 ```
 
 
@@ -268,7 +268,6 @@ order they execute, without intermediate variables. This was inspired by Unix sh
 - `//` comments are not skipped yet: `/` always scans as division.
 - `true` and `false` still scan as booleans alongside `nocap` and `cap`.
 - `./run` with no arguments does not start a REPL yet.
-- The scanner stops at the first error instead of reporting every error in the file.
 - Tokens do not carry a literal value yet.
 
 ## Changelog
