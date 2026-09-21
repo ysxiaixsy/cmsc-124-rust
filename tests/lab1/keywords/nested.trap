@@ -1,0 +1,6 @@
+spin (x != 0) {
+    x = x - 1
+    ong (x <= 0) {
+        pause
+    }
+}

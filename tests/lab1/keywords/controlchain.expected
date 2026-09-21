@@ -1,0 +1,130 @@
+Token {
+    token_type: Ong,
+    lexeme: "ong",
+    line: 1,
+}
+Token {
+    token_type: LeftParen,
+    lexeme: "(",
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "x",
+    line: 1,
+}
+Token {
+    token_type: EqualEqual,
+    lexeme: "==",
+    line: 1,
+}
+Token {
+    token_type: Num,
+    lexeme: "5",
+    line: 1,
+}
+Token {
+    token_type: RightParen,
+    lexeme: ")",
+    line: 1,
+}
+Token {
+    token_type: LeftBrace,
+    lexeme: "{",
+    line: 1,
+}
+Token {
+    token_type: Spittin,
+    lexeme: "spittin",
+    line: 2,
+}
+Token {
+    token_type: String,
+    lexeme: "x is five",
+    line: 2,
+}
+Token {
+    token_type: RightBrace,
+    lexeme: "}",
+    line: 3,
+}
+Token {
+    token_type: Wait,
+    lexeme: "wait",
+    line: 3,
+}
+Token {
+    token_type: LeftParen,
+    lexeme: "(",
+    line: 3,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "x",
+    line: 3,
+}
+Token {
+    token_type: GreaterThan,
+    lexeme: ">",
+    line: 3,
+}
+Token {
+    token_type: Num,
+    lexeme: "3",
+    line: 3,
+}
+Token {
+    token_type: RightParen,
+    lexeme: ")",
+    line: 3,
+}
+Token {
+    token_type: LeftBrace,
+    lexeme: "{",
+    line: 3,
+}
+Token {
+    token_type: Spittin,
+    lexeme: "spittin",
+    line: 4,
+}
+Token {
+    token_type: String,
+    lexeme: "x is bigger than three",
+    line: 4,
+}
+Token {
+    token_type: RightBrace,
+    lexeme: "}",
+    line: 5,
+}
+Token {
+    token_type: Nah,
+    lexeme: "nah",
+    line: 5,
+}
+Token {
+    token_type: LeftBrace,
+    lexeme: "{",
+    line: 5,
+}
+Token {
+    token_type: Spittin,
+    lexeme: "spittin",
+    line: 6,
+}
+Token {
+    token_type: String,
+    lexeme: "fallback case",
+    line: 6,
+}
+Token {
+    token_type: RightBrace,
+    lexeme: "}",
+    line: 7,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    line: 7,
+}
