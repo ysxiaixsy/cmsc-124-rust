@@ -1,6 +1,10 @@
+mod ast;
+mod parser;
+mod printer;
 mod tokens;
 mod tokenizer;
 
+use parser::Parser;
 use std::{env, fs, io::{self, Write}, process};
 use tokenizer::{tokenizer, ScanResult};
 
@@ -20,8 +24,8 @@ fn main(){
         return;
     }
 
-    if args.len() != 3 || args[1] != "--tokenize" {
-        fail("Usage: ./run [--tokenize <source-file>]");
+    if args.len() != 3 || (args[1] != "--tokenize" && args[1] != "--parse") {
+        fail("Usage: ./run [--tokenize <source-file> | --parse <source-file>]");
     }
 
     let filepath = &args[2];
@@ -29,9 +33,35 @@ fn main(){
     let contents = fs::read_to_string(filepath).
     unwrap_or_else(|error| fail(&format!("Failed to read file: {}", error)));
     let result = tokenizer(contents);
-    if !print_result(result) {
+    let accepted = if args[1] == "--parse" { print_parse(result) } else { print_result(result) };
+    if !accepted {
         process::exit(65);
     }
+}
+
+// parses the scanned tokens and prints one tree per expression to stdout. scan errors and syntax
+// errors go to stderr instead, with nothing on stdout. returns false when there were errors
+fn print_parse(result: ScanResult) -> bool {
+    // the parser only runs on a clean scan; there's no point parsing tokens around a bad character
+    if !result.errors.is_empty() {
+        for error in result.errors {
+            eprintln!("Error: {}", error);
+        }
+        return false;
+    }
+
+    let (expressions, errors) = Parser::new(result.tokens).parse();
+    if !errors.is_empty() {
+        for error in errors {
+            eprintln!("{}", error.message);
+        }
+        return false;
+    }
+
+    for expr in &expressions {
+        println!("{}", printer::print(expr));
+    }
+    true
 }
 
 // prints the tokens to stdout if there were no errors; otherwise prints the tokens scanned before
