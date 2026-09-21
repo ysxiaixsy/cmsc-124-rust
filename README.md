@@ -21,11 +21,11 @@ TrapScript is a dynamically typed scripting language styled on internet slang, d
 
 | Command | What it does |
 |---|---|
-| `./run <file>` | [Executes a program. Available from Lab 4.] |
-| `./run --tokenize <file>` | [Prints the token stream.] |
-| `./run --parse <file>` | [Prints the parsed tree.] |
-| `./run --eval <file>` | [Evaluates each expression and prints its value.] |
-| `./run` | [Starts the REPL.] |
+| `./run <file>` | Executes a program. Not implemented yet (Lab 4); currently prints a usage error. |
+| `./run --tokenize <file>` | Scans the file and prints its token stream to stdout, or every lexical error to stderr. |
+| `./run --parse <file>` | Prints the parsed tree. Not implemented yet (Lab 2). |
+| `./run --eval <file>` | Evaluates each expression and prints its value. Not implemented yet (Lab 3). |
+| `./run` | Starts the REPL. Not implemented yet. |
 
 
 Exit codes: `0` when the file scans cleanly, `65` when the scanner rejects the file (an unexpected character or an unterminated string), `70` for runtime errors (not used until Lab 3).
@@ -282,6 +282,7 @@ order they execute, without intermediate variables. This was inspired by Unix sh
 - `//` comments are not skipped yet: `/` always scans as division.
 - `true` and `false` still scan as booleans alongside `nocap` and `cap`.
 - `./run` with no arguments does not start a REPL yet.
+- `./run <file>` without a flag prints a usage error instead of the file's contents, so `tests/lab0` fails and is left out of CI.
 - Tokens do not carry a literal value yet.
 
 ## Changelog
