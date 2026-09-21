@@ -23,12 +23,12 @@ TrapScript is a dynamically typed scripting language styled on internet slang, d
 |---|---|
 | `./run <file>` | Executes a program. Not implemented yet (Lab 4); currently prints a usage error. |
 | `./run --tokenize <file>` | Scans the file and prints its token stream to stdout, or every lexical error to stderr. |
-| `./run --parse <file>` | Prints the parsed tree. Not implemented yet (Lab 2). |
+| `./run --parse <file>` | Parses the file and prints one tree per expression in prefix form, or every scan or syntax error to stderr. So far it handles literals, grouping, `!`, `==`, and `!=` (Lab 2 week 1). |
 | `./run --eval <file>` | Evaluates each expression and prints its value. Not implemented yet (Lab 3). |
 | `./run` | Starts the REPL. Type code across as many lines as you like: Enter starts a new line (shown with a `... ` prompt), and a blank line submits the whole entry. Its tokens are printed, or its errors if it has any, and the prompt comes back. Line numbers count from 1 within each entry. The session ends when input closes with Ctrl+C. |
 
 
-Exit codes: `0` when the file scans cleanly, `65` when the scanner rejects the file (an unexpected character or an unterminated string), `70` for runtime errors (not used until Lab 3).
+Exit codes: `0` when the file is accepted, `65` when it is rejected before running (a lexical error from the scanner or a syntax error from the parser), `70` for runtime errors (not used until Lab 3).
 
 ## File extension
 
@@ -61,17 +61,18 @@ Exit codes: `0` when the file scans cleanly, `65` when the scanner rejects the f
 | Operator | Category | Operands | Associativity | Precedence |
 |---|---|---|---|---|
 | `=` | assignment | binary | right | 1 |
-| `==` | comparison | binary | left | 2 |
-| `!=` | comparison | binary | left | 2 |
-| `<` | comparison | binary | left | 2 |
-| `<=` | comparison | binary | left | 2 |
-| `>` | comparison | binary | left | 2 |
-| `>=` | comparison | binary | left | 2 |
-| `+` | arithmetic | binary | left | 3 |
-| `-` | arithmetic | binary/unary | left | 3 |
-| `*` | arithmetic | binary | left | 4 |
-| `/` | arithmetic | binary | left | 4 |
-| `!` | logical | unary | right | [TODO — Lab 2] |
+| `==` | equality | binary | left | 2 |
+| `!=` | equality | binary | left | 2 |
+| `<` | comparison | binary | left | 3 |
+| `<=` | comparison | binary | left | 3 |
+| `>` | comparison | binary | left | 3 |
+| `>=` | comparison | binary | left | 3 |
+| `+` | arithmetic | binary | left | 4 |
+| `-` | arithmetic | binary | left | 4 |
+| `*` | arithmetic | binary | left | 5 |
+| `/` | arithmetic | binary | left | 5 |
+| `!` | logical | unary | right | 6 |
+| `-` | arithmetic | unary | right | 6 |
 | `>>` | pipeline | binary | left | [TODO — where does chaining sit relative to arithmetic?] |
 
 ### Punctuation
@@ -133,18 +134,37 @@ Frozen as of Lab 1; changes are recorded in the changelog.
 ## Grammar
 
 ```
-[Your complete context-free grammar, current as of the latest activity.
-Unambiguous, with precedence and associativity encoded in rule structure.]
+expression → equality
+equality   → comparison ( ( "!=" | "==" ) comparison )*
+comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )*
+term       → factor ( ( "-" | "+" ) factor )*
+factor     → unary ( ( "/" | "*" ) unary )*
+unary      → ( "!" | "-" ) unary | primary
+primary    → NUM | DEC | STRING | "nocap" | "cap" | "(" expression ")"
 ```
+
+- Quoted terminals are tokens. `NUM`, `DEC`, and `STRING` are the scanner's integer, decimal, and string tokens. `true` and `false` produce the same tokens as `nocap` and `cap` for now (see known limitations).
+- The rules go from loosest-binding (`equality`) to tightest (`primary`), and each rule only calls the one below it. That is what makes `!` bind tighter than `==`: `!nocap == cap` parses as `(== (! nocap) cap)`.
+- The `( ... )*` loops make every binary operator left-associative: `1 != 2 != 3` parses as `(!= (!= 1.0 2.0) 3.0)`.
+- `unary` calls itself, so unary operators chain and group from the right: `!!nocap` parses as `(! (! nocap))`.
+- **Implemented so far (Lab 2 week 1):** `expression`, `equality`, the `"!"` branch of `unary`, and `primary`. Until `comparison`, `term`, and `factor` exist, `equality` calls `unary` directly.
+- **Splitting a file into expressions:** an expression ends where the grammar says it ends, and the next one has to start on a new line. An unfinished expression continues onto the next line, so `1 ==` followed by `2` on the next line is one expression. An empty file has no expressions and is accepted.
+- `>>` is not in the grammar yet: the scanner doesn't produce it, and its precedence is still undecided.
+- TrapScript has no nil, so `primary` has no nil literal.
 
 ## Parse output format
 
 ```
-[one line of real --parse output, e.g. (+ 1.0 (* 2.0 3.0))]
+(!= (group (== 1.0 2.0)) (! cap))
 ```
 
-- Groupings print as: [form]
-- Numbers print as: [form]
+That is the output for `(1 == 2) != !cap`.
+
+- One line per expression, in prefix form: the operator comes first, then its operands.
+- Groupings print as: `(group ...)`
+- Numbers print as: always with a decimal point, so `5` prints as `5.0` and `3.14` as `3.14`
+- Strings print in double quotes: `"hi"`
+- Booleans print as `nocap` and `cap`, even when the source said `true` or `false`
 
 ## Semantics
 
@@ -207,11 +227,20 @@ Error: Unterminated string starting on line 3
 
 When a file has errors, `--tokenize` first prints the tokens it scanned before the first error, then every error in the file. All of it goes to stderr, so stdout stays empty for a rejected file, and the exit code is `65`. The REPL shows an entry with errors the same way.
 
+Syntax errors from `--parse` name the line and the token where parsing failed, or `end` for the end of the file:
+
+```
+[line 1] Error at ')': Expect expression.
+[line 3] Error at '+': Expect expression.
+```
+
+The parser reports every syntax error in the file: after an error it skips the rest of that line and carries on with the next one. Like `--tokenize`, a rejected file prints nothing to stdout and exits `65`.
+
 
 | Failure | Exit code |
 |---|---|
 | lexical error: unexpected character or unterminated string | 65 |
-| [syntax error] | 65 |
+| syntax error: a missing `)`, a missing operand, or a token that can't start an expression | 65 |
 | [runtime error] | 70 |
 
 
@@ -285,6 +314,7 @@ order they execute, without intermediate variables. This was inspired by Unix sh
 - `true` and `false` still scan as booleans alongside `nocap` and `cap`.
 - `./run <file>` without a flag prints a usage error instead of the file's contents, so `tests/lab0` fails and is left out of CI.
 - Tokens do not carry a literal value yet.
+- `--parse` only handles literals, grouping, `!`, `==`, and `!=` so far. `<`, `+`, `*`, unary `-`, and the rest are a syntax error until their grammar levels are added.
 
 ## Changelog
 
@@ -292,3 +322,4 @@ order they execute, without intermediate variables. This was inspired by Unix sh
 | Activity | What changed in the language |
 |---|---|
 | Lab 1 | Initial token vocabulary and keyword set defined; pipeline operator (`>>`) introduced for chained method/operator calls. |
+| Lab 2 | Drafted the expression grammar. `==` and `!=` now bind looser than `<`, `<=`, `>`, and `>=` (they shared one precedence level in Lab 1), and `!` and unary `-` sit at the tightest level. |
