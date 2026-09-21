@@ -1,0 +1,3 @@
+nocap == (cap == cap)
+(1 == 2) != !cap
+!(nocap == cap)

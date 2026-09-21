@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Tokentypes {
     Eof,
     Equal,
@@ -44,3 +44,4 @@ pub struct Token {
     pub lexeme: String,
     pub line: usize,
 }
+

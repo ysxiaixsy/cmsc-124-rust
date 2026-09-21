@@ -1,7 +1,19 @@
 use crate::tokens::{Token, Tokentypes};
 
+pub struct ScanResult {
+    pub tokens: Vec<Token>,
+    pub errors: Vec<String>,
+    // how many tokens were scanned before the first error; None when there were no errors
+    pub first_error_at: Option<usize>,
+}
 
-pub fn tokenizer(input: String) -> Vec<Token> {
+
+
+
+
+pub fn tokenizer(input: String) -> ScanResult {
+    let mut errors: Vec<String> = Vec::new();
+    let mut first_error_at: Option<usize> = None;
     let mut tokens: Vec<Token> = Vec::new();
     let chars: Vec<char> = input.chars().collect();
     let mut i = 0;
@@ -58,7 +70,9 @@ pub fn tokenizer(input: String) -> Vec<Token> {
                     i += 1;
                 }
                 if i >= chars.len() {
-                    crate::fail(&format!("Unterminated string starting on line {}", start_line));
+                    // get_or_insert only sets it the first time, so later errors don't move it
+                    first_error_at.get_or_insert(tokens.len());
+                    errors.push(format!("Unterminated string starting on line {}", start_line));
                 }
                 i += 1; // skip closing quote
                 tokens.push(Token { token_type: Tokentypes::String, lexeme, line: start_line });
@@ -99,7 +113,7 @@ pub fn tokenizer(input: String) -> Vec<Token> {
                     "spittin" => Tokentypes::Spittin,
                     "motion"  => Tokentypes::Motion,
                     "pause"   => Tokentypes::Pause,
-                    "typeshi" => Tokentypes::Typeshi,
+                    "typeshi" => Tokentypes::Typeshi, 
                     "true"    => Tokentypes::True,
                     "false"   => Tokentypes::False,
                     "nocap"   => Tokentypes::True,
@@ -110,11 +124,15 @@ pub fn tokenizer(input: String) -> Vec<Token> {
             }
 
             _ => {
-                crate::fail(&format!("Unexpected character '{}' on line {}", c, line));
+                first_error_at.get_or_insert(tokens.len());
+                errors.push(format!(
+                    "Unexpected character '{}' on line {}", c, line
+                ));
+                i += 1;
             }
         }
     }
 
     tokens.push(Token { token_type: Tokentypes::Eof, lexeme: String::new(), line });
-    tokens
+    ScanResult { tokens, errors, first_error_at }
 }

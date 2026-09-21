@@ -1,0 +1,45 @@
+Token {
+    token_type: Hold,
+    lexeme: "hold",
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "x",
+    line: 1,
+}
+Token {
+    token_type: Equal,
+    lexeme: "=",
+    line: 1,
+}
+Token {
+    token_type: Num,
+    lexeme: "5",
+    line: 1,
+}
+Token {
+    token_type: Hold,
+    lexeme: "hold",
+    line: 4,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "y",
+    line: 4,
+}
+Token {
+    token_type: Equal,
+    lexeme: "=",
+    line: 4,
+}
+Token {
+    token_type: Num,
+    lexeme: "1",
+    line: 4,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    line: 4,
+}

@@ -1,0 +1,115 @@
+Token {
+    token_type: Spin,
+    lexeme: "spin",
+    line: 1,
+}
+Token {
+    token_type: LeftParen,
+    lexeme: "(",
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "x",
+    line: 1,
+}
+Token {
+    token_type: NotEqual,
+    lexeme: "!=",
+    line: 1,
+}
+Token {
+    token_type: Num,
+    lexeme: "0",
+    line: 1,
+}
+Token {
+    token_type: RightParen,
+    lexeme: ")",
+    line: 1,
+}
+Token {
+    token_type: LeftBrace,
+    lexeme: "{",
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "x",
+    line: 2,
+}
+Token {
+    token_type: Equal,
+    lexeme: "=",
+    line: 2,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "x",
+    line: 2,
+}
+Token {
+    token_type: Minus,
+    lexeme: "-",
+    line: 2,
+}
+Token {
+    token_type: Num,
+    lexeme: "1",
+    line: 2,
+}
+Token {
+    token_type: Ong,
+    lexeme: "ong",
+    line: 3,
+}
+Token {
+    token_type: LeftParen,
+    lexeme: "(",
+    line: 3,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "x",
+    line: 3,
+}
+Token {
+    token_type: LessThanEqual,
+    lexeme: "<=",
+    line: 3,
+}
+Token {
+    token_type: Num,
+    lexeme: "0",
+    line: 3,
+}
+Token {
+    token_type: RightParen,
+    lexeme: ")",
+    line: 3,
+}
+Token {
+    token_type: LeftBrace,
+    lexeme: "{",
+    line: 3,
+}
+Token {
+    token_type: Pause,
+    lexeme: "pause",
+    line: 4,
+}
+Token {
+    token_type: RightBrace,
+    lexeme: "}",
+    line: 5,
+}
+Token {
+    token_type: RightBrace,
+    lexeme: "}",
+    line: 6,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    line: 6,
+}

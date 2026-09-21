@@ -1,0 +1,25 @@
+Token {
+    token_type: Locked,
+    lexeme: "locked",
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "name",
+    line: 1,
+}
+Token {
+    token_type: Equal,
+    lexeme: "=",
+    line: 1,
+}
+Token {
+    token_type: String,
+    lexeme: "trap lang",
+    line: 1,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    line: 1,
+}
