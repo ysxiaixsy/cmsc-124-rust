@@ -34,10 +34,14 @@ fn main(){
     }
 }
 
-// prints the errors to stderr, or the tokens to stdout if there were no errors;
-// returns false when there were errors
+// prints the tokens to stdout if there were no errors; otherwise prints the tokens scanned before
+// the first error and then every error, all on stderr, since nothing about a rejected file belongs
+// on stdout. returns false when there were errors
 fn print_result(result: ScanResult) -> bool {
-    if !result.errors.is_empty() {
+    if let Some(first_error_at) = result.first_error_at {
+        for token in &result.tokens[..first_error_at] {
+            eprintln!("{:#?}", token);
+        }
         for error in result.errors {
             eprintln!("Error: {}", error);
         }

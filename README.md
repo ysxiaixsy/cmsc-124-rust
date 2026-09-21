@@ -205,6 +205,8 @@ Error: Unexpected character '@' on line 2
 Error: Unterminated string starting on line 3
 ```
 
+When a file has errors, `--tokenize` first prints the tokens it scanned before the first error, then every error in the file. All of it goes to stderr, so stdout stays empty for a rejected file, and the exit code is `65`. The REPL shows an entry with errors the same way.
+
 
 | Failure | Exit code |
 |---|---|

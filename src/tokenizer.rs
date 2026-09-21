@@ -3,6 +3,8 @@ use crate::tokens::{Token, Tokentypes};
 pub struct ScanResult {
     pub tokens: Vec<Token>,
     pub errors: Vec<String>,
+    // how many tokens were scanned before the first error; None when there were no errors
+    pub first_error_at: Option<usize>,
 }
 
 
@@ -11,6 +13,7 @@ pub struct ScanResult {
 
 pub fn tokenizer(input: String) -> ScanResult {
     let mut errors: Vec<String> = Vec::new();
+    let mut first_error_at: Option<usize> = None;
     let mut tokens: Vec<Token> = Vec::new();
     let chars: Vec<char> = input.chars().collect();
     let mut i = 0;
@@ -67,6 +70,8 @@ pub fn tokenizer(input: String) -> ScanResult {
                     i += 1;
                 }
                 if i >= chars.len() {
+                    // get_or_insert only sets it the first time, so later errors don't move it
+                    first_error_at.get_or_insert(tokens.len());
                     errors.push(format!("Unterminated string starting on line {}", start_line));
                 }
                 i += 1; // skip closing quote
@@ -119,6 +124,7 @@ pub fn tokenizer(input: String) -> ScanResult {
             }
 
             _ => {
+                first_error_at.get_or_insert(tokens.len());
                 errors.push(format!(
                     "Unexpected character '{}' on line {}", c, line
                 ));
@@ -128,5 +134,5 @@ pub fn tokenizer(input: String) -> ScanResult {
     }
 
     tokens.push(Token { token_type: Tokentypes::Eof, lexeme: String::new(), line });
-    ScanResult { tokens, errors }
+    ScanResult { tokens, errors, first_error_at }
 }
