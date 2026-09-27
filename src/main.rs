@@ -15,9 +15,11 @@ use std::{
 };
 use tokenizer::{tokenizer, ScanResult};
 
-const USAGE: &str = "Usage:\n  ./run\n  ./run --tokenize <source-file>\n  ./run --parse <source-file>\n  ./run --help";
+const USAGE: &str = "Usage:\n  ./run\n  ./run <source-file>\n  ./run --tokenize <source-file>\n  ./run --parse <source-file>\n  ./run --help";
 
 enum Stage {
+    // plain ./run <file>. there is no interpreter until Lab 4, so for now it prints the file back
+    Run,
     Tokenize,
     Parse,
 }
@@ -41,19 +43,18 @@ fn parse_command(mut args: impl Iterator<Item = OsString>) -> Result<Command, St
         };
     }
 
-    let stage = if flag == OsStr::new("--tokenize") {
-        Stage::Tokenize
+    // with no flag, the first argument is already the source file
+    let (stage, path) = if flag == OsStr::new("--tokenize") {
+        (Stage::Tokenize, args.next())
     } else if flag == OsStr::new("--parse") {
-        Stage::Parse
+        (Stage::Parse, args.next())
     } else if flag.to_string_lossy().starts_with('-') {
         return Err(format!("Unknown flag: {}", flag.to_string_lossy()));
     } else {
-        return Err("Expected --tokenize or --parse before the source file".into());
+        (Stage::Run, Some(flag.clone()))
     };
 
-    let path = args
-        .next()
-        .ok_or_else(|| format!("Missing source file after {}", flag.to_string_lossy()))?;
+    let path = path.ok_or_else(|| format!("Missing source file after {}", flag.to_string_lossy()))?;
     if args.next().is_some() {
         return Err("Too many arguments: expected one source file".into());
     }
@@ -92,10 +93,13 @@ fn main() -> ExitCode {
 
 fn run_file(stage: Stage, path: &Path) -> io::Result<bool> {
     let source = fs::read_to_string(path)?;
-    let result = tokenizer(source);
     Ok(match stage {
-        Stage::Tokenize => report_tokens(result),
-        Stage::Parse => report_parse(result),
+        Stage::Run => {
+            print!("{source}");
+            true
+        }
+        Stage::Tokenize => report_tokens(tokenizer(source)),
+        Stage::Parse => report_parse(tokenizer(source)),
     })
 }
 
