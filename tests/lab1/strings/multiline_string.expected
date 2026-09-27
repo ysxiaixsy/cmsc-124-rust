@@ -1,0 +1,10 @@
+Token {
+    token_type: String,
+    lexeme: "first\nsecond",
+    line: 1,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    line: 3,
+}

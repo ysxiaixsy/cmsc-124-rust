@@ -1,0 +1,20 @@
+Token {
+    token_type: Num,
+    lexeme: "8",
+    line: 1,
+}
+Token {
+    token_type: Slash,
+    lexeme: "/",
+    line: 1,
+}
+Token {
+    token_type: Num,
+    lexeme: "2",
+    line: 1,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    line: 2,
+}

@@ -1,0 +1,30 @@
+Token {
+    token_type: Identifier,
+    lexeme: "_name",
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "café",
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "x²",
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "Name",
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "name",
+    line: 1,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    line: 2,
+}
