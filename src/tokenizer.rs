@@ -51,7 +51,17 @@ pub fn tokenizer(input: String) -> ScanResult {
             '+' => { tokens.push(Token { token_type: Tokentypes::Plus, lexeme: "+".into(), line }); i += 1; }
             '-' => { tokens.push(Token { token_type: Tokentypes::Minus, lexeme: "-".into(), line }); i += 1; }
             '*' => { tokens.push(Token { token_type: Tokentypes::Star, lexeme: "*".into(), line }); i += 1; }
-            '/' => { tokens.push(Token { token_type: Tokentypes::Slash, lexeme: "/".into(), line }); i += 1; }
+            '/' => {
+                if chars.get(i + 1) == Some(&'/') {
+                    i += 2;
+                    while i < chars.len() && chars[i] != '\n' {
+                        i += 1;
+                    }
+                } else {
+                    tokens.push(Token { token_type: Tokentypes::Slash, lexeme: "/".into(), line });
+                    i += 1;
+                }
+            }
             '{' => { tokens.push(Token { token_type: Tokentypes::LeftBrace, lexeme: "{".into(), line }); i += 1; }
             '}' => { tokens.push(Token { token_type: Tokentypes::RightBrace, lexeme: "}".into(), line }); i += 1; }
             '(' => { tokens.push(Token { token_type: Tokentypes::LeftParen, lexeme: "(".into(), line }); i += 1; }
