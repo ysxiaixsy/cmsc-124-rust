@@ -21,12 +21,12 @@ TrapScript is a dynamically typed scripting language styled on internet slang.
 
 | Command | What it does |
 |---|---|
-| `./run <file>` | Executes a program. Not implemented yet (Lab 4); currently prints a usage error. |
+| `./run <file>` | Prints the file back unchanged, the Lab 0 behavior. From Lab 4 it executes the program instead. |
 | `./run --tokenize <file>` | Scans the file and prints its token stream to stdout, or every lexical error to stderr. |
 | `./run --parse <file>` | Parses the file and prints one tree per expression in prefix form, or every scan or syntax error to stderr. So far it handles literals, grouping, `!`, `==`, and `!=` (Lab 2 week 1). |
 | `./run --help` | Prints the supported command forms. |
 | `./run --eval <file>` | Evaluates each expression and prints its value. Not implemented yet (Lab 3). |
-| `./run` | Starts the REPL. Type code across as many lines as you like: Enter starts a new line (shown with a `... ` prompt), and a blank line submits the whole entry. Its tokens are printed, or its errors if it has any, and the prompt comes back. Line numbers count from 1 within each entry. The session ends when input closes with Ctrl+C. |
+| `./run` | Starts the REPL. Each line is scanned when you press Enter: its tokens are printed, or its errors if it has any, and the prompt comes back. Every line is scanned on its own, so each one starts at line 1 and ends with its own `Eof` token. End the session with Ctrl+Z then Enter on Windows (Ctrl+D on Linux or macOS), or with Ctrl+C. |
 
 
 Exit codes: `0` when the file is accepted, `65` when it is rejected before running (a lexical error from the scanner or a syntax error from the parser), `70` for runtime errors (not used until Lab 3).
@@ -53,7 +53,6 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 | `spittin` | print |
 | `cap` | boolean false |
 | `nocap` | boolean true |
-| [TODO] | null / nil |
 
 
 ### Operators
@@ -89,7 +88,7 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 | number | `42`, `3.14`. A trailing dot (`1.`) is allowed; a leading dot (`.5`) is an error. | an integer for `42`, a decimal for `3.14` and `1.` |
 | string | `"hello"`. Can span multiple lines. No escape sequences: a backslash is a normal character, so `\"` ends the string. | the text between the quotes |
 | boolean | `nocap`, `cap` | `nocap` is true, `cap` is false |
-| [nil] | [spelling] | [what runtime value] |
+| nil | none: TrapScript has no nil literal so far | n/a |
 
 
 ### Identifiers
@@ -103,13 +102,12 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 - Mid-line comments: allowed. Everything from `//` to the end of the line is ignored, so a comment can follow code.
 - Block comments: not supported
 - Nesting: not supported
-- [Harness note: comment_prefix in tests/lab*/manifest.json is set to the
-  token above.]
+- Harness note: the Lab 1 and Lab 2 test folders use sidecar mode, which never reads comments. From Lab 3, `comment_prefix` in the inline-mode manifests is `//`.
 
 ## Whitespace and termination
 
-- Whitespace significant: No. Newlines are treated as standard whitespace.
-- Statement terminator: none. Newlines are whitespace, so statement boundaries come from the grammar, not line breaks.
+- Whitespace significant: only between expressions. Spaces, tabs, and newlines separate tokens and are otherwise ignored by the scanner, but the parser requires each expression to start on a new line, and an unfinished expression carries on onto the next line (see Grammar).
+- Statement terminator: none. An expression ends where the grammar says it ends, and the next one has to start on a new line.
 - Block delimiters: curly braces `{}`
 - Grouping delimiters: parentheses `()`
 
@@ -117,17 +115,34 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 
 ```
 Token {
-    token_type: Hold,
-    lexeme: "hold",
+    token_type: Num,
+    lexeme: "42",
+    literal: Some(
+        Number(
+            42.0,
+        ),
+    ),
     line: 1,
 }
 ```
 
-Each token prints in Rust's pretty debug format (`{:#?}`), five lines per token:
+Each token prints in Rust's pretty debug format (`{:#?}`), one field per line:
 
 - `token_type`: the token's category, such as `Hold`, `Identifier`, or `Num`
-- `lexeme`: the token's source text; for a string, the text between the quotes
+- `lexeme`: the exact source text, in quotes. A string's lexeme keeps its own quotes, which print escaped: `"\"hi\""`
+- `literal`: the value the token stands for. Numbers give `Some(Number(...))`, always with a decimal point (`42` gives `42.0`); strings give `Some(String(...))`, without the quotes; `nocap` and `cap` give `Some(Boolean(true))` and `Some(Boolean(false))`. Every other token has `None`
 - `line`: the line the token starts on
+
+A token with no literal, such as a keyword, prints on six lines:
+
+```
+Token {
+    token_type: Hold,
+    lexeme: "hold",
+    literal: None,
+    line: 1,
+}
+```
 
 Frozen as of Lab 1; changes are recorded in the changelog.
 
@@ -224,7 +239,7 @@ Error: Unexpected character '@' on line 2
 Error: Unterminated string starting on line 3
 ```
 
-When a file has errors, `--tokenize` first prints the tokens it scanned before the first error, then every error in the file. All of it goes to stderr, so stdout stays empty for a rejected file, and the exit code is `65`. The REPL shows an entry with errors the same way.
+When a file has errors, `--tokenize` first prints the tokens it scanned before the first error, then every error in the file. All of it goes to stderr, so stdout stays empty for a rejected file, and the exit code is `65`. The REPL shows a line with errors the same way, then gives the prompt back instead of exiting.
 
 Syntax errors from `--parse` name the line and the token where parsing failed, or `end` for the end of the file:
 
@@ -248,6 +263,7 @@ The parser reports every syntax error in the file: after an error it skips the r
 
 | Folder | Activity | Mode | Flag |
 |---|---|---|---|
+| tests/lab0 | Onboarding | sidecar | none |
 | tests/lab1 | Scanner | sidecar | `--tokenize` |
 | tests/lab2 | Parser | sidecar | `--parse` |
 | tests/lab3 | Evaluator | inline | `--eval` |
@@ -297,8 +313,12 @@ Run locally with:
 ```bash
 curl -sSL https://raw.githubusercontent.com/WhiteLicorice/cmsc-124-harness/v1.1/run_tests.py -o run_tests.py
 ./build.sh
+python3 run_tests.py tests/lab0
 python3 run_tests.py tests/lab1
+python3 run_tests.py tests/lab2
 ```
+
+On Windows, run these from Git Bash and use `python` instead of `python3`.
 
 ## Sample code
 
@@ -321,8 +341,7 @@ guess `var`, but this tradeoff is worth it because personality creates identity.
 ## Known limitations
 
 - `true` and `false` still scan as booleans alongside `nocap` and `cap`.
-- `./run <file>` without a flag prints a usage error instead of the file's contents, so `tests/lab0` fails and is left out of CI.
-- Tokens do not carry a literal value yet.
+- The REPL scans each line on its own, so line numbers restart at 1 on every line, and a string can't continue onto the next line: a multi-line string that works in a file is an unterminated-string error in the REPL.
 - `--parse` only handles literals, grouping, `!`, `==`, and `!=` so far. `<`, `+`, `*`, unary `-`, and the rest are a syntax error until their grammar levels are added.
 
 ## Changelog
@@ -330,5 +349,5 @@ guess `var`, but this tradeoff is worth it because personality creates identity.
 
 | Activity | What changed in the language |
 |---|---|
-| Lab 1 | Initial token vocabulary and keyword set defined. |
+| Lab 1 | Initial token vocabulary and keyword set defined. Late in Lab 1 the token output format gained the `literal` field, and a string's lexeme started keeping its quotes, so every `tests/lab1` expectation was regenerated. |
 | Lab 2 | Drafted the expression grammar. `==` and `!=` now bind looser than `<`, `<=`, `>`, and `>=` (they shared one precedence level in Lab 1), and `!` and unary `-` sit at the tightest level. |
