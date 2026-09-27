@@ -143,41 +143,28 @@ fn report_tokens(result: ScanResult) -> bool {
     true
 }
 
-// Enter starts a new line and a blank line submits the entry; the session ends when the input closes
+// each submitted line is scanned on its own; an error does not end the session
 fn repl() {
-    while let Some(entry) = read_entry() {
-        if !entry.is_empty() {
-            // an entry with errors prints them and the loop keeps going, unlike file mode
-            report_tokens(tokenizer(entry));
-        }
-    }
-    println!();
-}
-
-// reads lines until a blank one and returns them joined; None once the input has closed
-fn read_entry() -> Option<String> {
-    let mut lines: Vec<String> = Vec::new();
     loop {
-        // "> " starts an entry, "... " continues it
-        print!("{}", if lines.is_empty() { "> " } else { "... " });
-        io::stdout().flush().unwrap(); // print! doesn't flush on its own, so the prompt would stay hidden
+        print!("> ");
+        if let Err(error) = io::stdout().flush() {
+            eprintln!("Error: Failed to write prompt: {error}");
+            break;
+        }
 
         let mut line = String::new();
         match io::stdin().read_line(&mut line) {
-            // 0 bytes means the input closed (Ctrl+C): scan what was typed, or stop if nothing was
-            Ok(0) => return if lines.is_empty() { None } else { Some(lines.join("\n")) },
-            Ok(_) => {}
+            Ok(0) => break,
+            Ok(_) => {
+                // remove the line ending only; other trailing spaces may belong to a string
+                let source = line.trim_end_matches(['\r', '\n']);
+                report_tokens(tokenizer(source.to_string()));
+            }
             Err(error) => {
-                eprintln!("Error: Failed to read input: {}", error);
-                return None;
+                eprintln!("Error: Failed to read input: {error}");
+                break;
             }
         }
-
-        let line = line.trim_end();
-        if line.is_empty() {
-            // joined without a trailing newline, so Eof lands on the last typed line
-            return Some(lines.join("\n"));
-        }
-        lines.push(line.to_string());
     }
+    println!();
 }
