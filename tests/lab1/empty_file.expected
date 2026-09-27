@@ -1,0 +1,6 @@
+Token {
+    token_type: Eof,
+    lexeme: "",
+    literal: None,
+    line: 1,
+}

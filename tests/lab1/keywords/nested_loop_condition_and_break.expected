@@ -1,0 +1,150 @@
+Token {
+    token_type: Spin,
+    lexeme: "spin",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: LeftParen,
+    lexeme: "(",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "x",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: NotEqual,
+    lexeme: "!=",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: Num,
+    lexeme: "0",
+    literal: Some(
+        Number(
+            0.0,
+        ),
+    ),
+    line: 1,
+}
+Token {
+    token_type: RightParen,
+    lexeme: ")",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: LeftBrace,
+    lexeme: "{",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "x",
+    literal: None,
+    line: 2,
+}
+Token {
+    token_type: Equal,
+    lexeme: "=",
+    literal: None,
+    line: 2,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "x",
+    literal: None,
+    line: 2,
+}
+Token {
+    token_type: Minus,
+    lexeme: "-",
+    literal: None,
+    line: 2,
+}
+Token {
+    token_type: Num,
+    lexeme: "1",
+    literal: Some(
+        Number(
+            1.0,
+        ),
+    ),
+    line: 2,
+}
+Token {
+    token_type: Ong,
+    lexeme: "ong",
+    literal: None,
+    line: 3,
+}
+Token {
+    token_type: LeftParen,
+    lexeme: "(",
+    literal: None,
+    line: 3,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "x",
+    literal: None,
+    line: 3,
+}
+Token {
+    token_type: LessThanEqual,
+    lexeme: "<=",
+    literal: None,
+    line: 3,
+}
+Token {
+    token_type: Num,
+    lexeme: "0",
+    literal: Some(
+        Number(
+            0.0,
+        ),
+    ),
+    line: 3,
+}
+Token {
+    token_type: RightParen,
+    lexeme: ")",
+    literal: None,
+    line: 3,
+}
+Token {
+    token_type: LeftBrace,
+    lexeme: "{",
+    literal: None,
+    line: 3,
+}
+Token {
+    token_type: Pause,
+    lexeme: "pause",
+    literal: None,
+    line: 4,
+}
+Token {
+    token_type: RightBrace,
+    lexeme: "}",
+    literal: None,
+    line: 5,
+}
+Token {
+    token_type: RightBrace,
+    lexeme: "}",
+    literal: None,
+    line: 6,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    literal: None,
+    line: 6,
+}

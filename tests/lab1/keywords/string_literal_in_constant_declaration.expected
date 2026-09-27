@@ -1,0 +1,34 @@
+Token {
+    token_type: Locked,
+    lexeme: "locked",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "name",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: Equal,
+    lexeme: "=",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: String,
+    lexeme: "\"trap lang\"",
+    literal: Some(
+        String(
+            "trap lang",
+        ),
+    ),
+    line: 1,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    literal: None,
+    line: 1,
+}

@@ -1,0 +1,74 @@
+Token {
+    token_type: Ong,
+    lexeme: "ong",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: LeftParen,
+    lexeme: "(",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "x",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: EqualEqual,
+    lexeme: "==",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: Num,
+    lexeme: "5",
+    literal: Some(
+        Number(
+            5.0,
+        ),
+    ),
+    line: 1,
+}
+Token {
+    token_type: RightParen,
+    lexeme: ")",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: LeftBrace,
+    lexeme: "{",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: Spittin,
+    lexeme: "spittin",
+    literal: None,
+    line: 2,
+}
+Token {
+    token_type: String,
+    lexeme: "\"x is five\"",
+    literal: Some(
+        String(
+            "x is five",
+        ),
+    ),
+    line: 2,
+}
+Token {
+    token_type: RightBrace,
+    lexeme: "}",
+    literal: None,
+    line: 3,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    literal: None,
+    line: 3,
+}

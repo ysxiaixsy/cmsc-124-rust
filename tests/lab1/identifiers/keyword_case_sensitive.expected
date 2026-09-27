@@ -1,0 +1,18 @@
+Token {
+    token_type: Identifier,
+    lexeme: "Hold",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: Hold,
+    lexeme: "hold",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    literal: None,
+    line: 2,
+}

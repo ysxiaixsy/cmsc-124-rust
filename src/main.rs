@@ -5,43 +5,103 @@ mod tokens;
 mod tokenizer;
 
 use parser::Parser;
-use std::{env, fs, io::{self, Write}, process};
+use std::{
+    env,
+    ffi::{OsStr, OsString},
+    fs,
+    io::{self, Write},
+    path::{Path, PathBuf},
+    process::ExitCode,
+};
 use tokenizer::{tokenizer, ScanResult};
 
-fn fail(message: &str) -> ! {
-    eprintln!("lab 0 error: {}", message);
-    process::exit(65);
+const USAGE: &str = "Usage:\n  ./run\n  ./run --tokenize <source-file>\n  ./run --parse <source-file>\n  ./run --help";
+
+enum Stage {
+    Tokenize,
+    Parse,
 }
 
+enum Command {
+    Repl,
+    File { stage: Stage, path: PathBuf },
+    Help,
+}
 
+fn parse_command(mut args: impl Iterator<Item = OsString>) -> Result<Command, String> {
+    let Some(flag) = args.next() else {
+        return Ok(Command::Repl);
+    };
 
-fn main(){
-    let args = env::args().collect::<Vec<String>>();
-
-    // no arguments: start the REPL
-    if args.len() == 1 {
-        repl();
-        return;
+    if flag == OsStr::new("--help") {
+        return if args.next().is_none() {
+            Ok(Command::Help)
+        } else {
+            Err("--help does not take a source file".into())
+        };
     }
 
-    if args.len() != 3 || (args[1] != "--tokenize" && args[1] != "--parse") {
-        fail("Usage: ./run [--tokenize <source-file> | --parse <source-file>]");
+    let stage = if flag == OsStr::new("--tokenize") {
+        Stage::Tokenize
+    } else if flag == OsStr::new("--parse") {
+        Stage::Parse
+    } else if flag.to_string_lossy().starts_with('-') {
+        return Err(format!("Unknown flag: {}", flag.to_string_lossy()));
+    } else {
+        return Err("Expected --tokenize or --parse before the source file".into());
+    };
+
+    let path = args
+        .next()
+        .ok_or_else(|| format!("Missing source file after {}", flag.to_string_lossy()))?;
+    if args.next().is_some() {
+        return Err("Too many arguments: expected one source file".into());
     }
 
-    let filepath = &args[2];
+    Ok(Command::File { stage, path: path.into() })
+}
 
-    let contents = fs::read_to_string(filepath).
-    unwrap_or_else(|error| fail(&format!("Failed to read file: {}", error)));
-    let result = tokenizer(contents);
-    let accepted = if args[1] == "--parse" { print_parse(result) } else { print_result(result) };
-    if !accepted {
-        process::exit(65);
+fn main() -> ExitCode {
+    let command = match parse_command(env::args_os().skip(1)) {
+        Ok(command) => command,
+        Err(message) => {
+            eprintln!("Error: {message}\n{USAGE}");
+            return ExitCode::from(65);
+        }
+    };
+
+    match command {
+        Command::Repl => {
+            repl();
+            ExitCode::SUCCESS
+        }
+        Command::Help => {
+            println!("{USAGE}");
+            ExitCode::SUCCESS
+        }
+        Command::File { stage, path } => match run_file(stage, &path) {
+            Ok(true) => ExitCode::SUCCESS,
+            Ok(false) => ExitCode::from(65),
+            Err(error) => {
+                eprintln!("Error: Failed to read '{}': {error}", path.display());
+                ExitCode::from(65)
+            }
+        },
     }
+}
+
+fn run_file(stage: Stage, path: &Path) -> io::Result<bool> {
+    let source = fs::read_to_string(path)?;
+    let result = tokenizer(source);
+    Ok(match stage {
+        Stage::Tokenize => report_tokens(result),
+        Stage::Parse => report_parse(result),
+    })
 }
 
 // parses the scanned tokens and prints one tree per expression to stdout. scan errors and syntax
 // errors go to stderr instead, with nothing on stdout. returns false when there were errors
-fn print_parse(result: ScanResult) -> bool {
+fn report_parse(result: ScanResult) -> bool {
     // the parser only runs on a clean scan; there's no point parsing tokens around a bad character
     if !result.errors.is_empty() {
         for error in result.errors {
@@ -67,7 +127,7 @@ fn print_parse(result: ScanResult) -> bool {
 // prints the tokens to stdout if there were no errors; otherwise prints the tokens scanned before
 // the first error and then every error, all on stderr, since nothing about a rejected file belongs
 // on stdout. returns false when there were errors
-fn print_result(result: ScanResult) -> bool {
+fn report_tokens(result: ScanResult) -> bool {
     if let Some(first_error_at) = result.first_error_at {
         for token in &result.tokens[..first_error_at] {
             eprintln!("{:#?}", token);
@@ -83,41 +143,28 @@ fn print_result(result: ScanResult) -> bool {
     true
 }
 
-// Enter starts a new line and a blank line submits the entry; the session ends when the input closes
+// each submitted line is scanned on its own; an error does not end the session
 fn repl() {
-    while let Some(entry) = read_entry() {
-        if !entry.is_empty() {
-            // an entry with errors prints them and the loop keeps going, unlike file mode
-            print_result(tokenizer(entry));
-        }
-    }
-    println!();
-}
-
-// reads lines until a blank one and returns them joined; None once the input has closed
-fn read_entry() -> Option<String> {
-    let mut lines: Vec<String> = Vec::new();
     loop {
-        // "> " starts an entry, "... " continues it
-        print!("{}", if lines.is_empty() { "> " } else { "... " });
-        io::stdout().flush().unwrap(); // print! doesn't flush on its own, so the prompt would stay hidden
+        print!("> ");
+        if let Err(error) = io::stdout().flush() {
+            eprintln!("Error: Failed to write prompt: {error}");
+            break;
+        }
 
         let mut line = String::new();
         match io::stdin().read_line(&mut line) {
-            // 0 bytes means the input closed (Ctrl+D): scan what was typed, or stop if nothing was
-            Ok(0) => return if lines.is_empty() { None } else { Some(lines.join("\n")) },
-            Ok(_) => {}
+            Ok(0) => break,
+            Ok(_) => {
+                // remove the line ending only; other trailing spaces may belong to a string
+                let source = line.trim_end_matches(['\r', '\n']);
+                report_tokens(tokenizer(source.to_string()));
+            }
             Err(error) => {
-                eprintln!("Error: Failed to read input: {}", error);
-                return None;
+                eprintln!("Error: Failed to read input: {error}");
+                break;
             }
         }
-
-        let line = line.trim_end();
-        if line.is_empty() {
-            // joined without a trailing newline, so Eof lands on the last typed line
-            return Some(lines.join("\n"));
-        }
-        lines.push(line.to_string());
     }
+    println!();
 }

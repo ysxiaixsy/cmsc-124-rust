@@ -42,6 +42,14 @@ pub enum Tokentypes {
 pub struct Token {
     pub token_type: Tokentypes,
     pub lexeme: String,
+    pub literal: Option<LiteralValue>,
     pub line: usize,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum LiteralValue {
+    Number(f64),
+    String(String),
+    Boolean(bool),
 }
 

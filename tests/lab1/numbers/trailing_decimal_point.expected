@@ -1,0 +1,16 @@
+Token {
+    token_type: Dec,
+    lexeme: "1.",
+    literal: Some(
+        Number(
+            1.0,
+        ),
+    ),
+    line: 1,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    literal: None,
+    line: 2,
+}

@@ -1,4 +1,4 @@
-use crate::tokens::{Token, Tokentypes};
+use crate::tokens::{LiteralValue, Token, Tokentypes};
 
 pub struct ScanResult {
     pub tokens: Vec<Token>,
@@ -42,40 +42,53 @@ pub fn tokenizer(input: String) -> ScanResult {
                     _ => unreachable!(),
                 };
                 let lexeme: String = chars[i..i + len].iter().collect();
-                tokens.push(Token { token_type, lexeme, line });
+                tokens.push(Token { token_type, lexeme, literal: None, line });
                 i += len;
             }
 
             // simple single-char tokens
-            ',' => { tokens.push(Token { token_type: Tokentypes::Comma, lexeme: ",".into(), line }); i += 1; }
-            '+' => { tokens.push(Token { token_type: Tokentypes::Plus, lexeme: "+".into(), line }); i += 1; }
-            '-' => { tokens.push(Token { token_type: Tokentypes::Minus, lexeme: "-".into(), line }); i += 1; }
-            '*' => { tokens.push(Token { token_type: Tokentypes::Star, lexeme: "*".into(), line }); i += 1; }
-            '/' => { tokens.push(Token { token_type: Tokentypes::Slash, lexeme: "/".into(), line }); i += 1; }
-            '{' => { tokens.push(Token { token_type: Tokentypes::LeftBrace, lexeme: "{".into(), line }); i += 1; }
-            '}' => { tokens.push(Token { token_type: Tokentypes::RightBrace, lexeme: "}".into(), line }); i += 1; }
-            '(' => { tokens.push(Token { token_type: Tokentypes::LeftParen, lexeme: "(".into(), line }); i += 1; }
-            ')' => { tokens.push(Token { token_type: Tokentypes::RightParen, lexeme: ")".into(), line }); i += 1; }
+            ',' => { tokens.push(Token { token_type: Tokentypes::Comma, lexeme: ",".into(), literal: None, line }); i += 1; }
+            '+' => { tokens.push(Token { token_type: Tokentypes::Plus, lexeme: "+".into(), literal: None, line }); i += 1; }
+            '-' => { tokens.push(Token { token_type: Tokentypes::Minus, lexeme: "-".into(), literal: None, line }); i += 1; }
+            '*' => { tokens.push(Token { token_type: Tokentypes::Star, lexeme: "*".into(), literal: None, line }); i += 1; }
+            '/' => {
+                if chars.get(i + 1) == Some(&'/') {
+                    i += 2;
+                    while i < chars.len() && chars[i] != '\n' {
+                        i += 1;
+                    }
+                } else {
+                    tokens.push(Token { token_type: Tokentypes::Slash, lexeme: "/".into(), literal: None, line });
+                    i += 1;
+                }
+            }
+            '{' => { tokens.push(Token { token_type: Tokentypes::LeftBrace, lexeme: "{".into(), literal: None, line }); i += 1; }
+            '}' => { tokens.push(Token { token_type: Tokentypes::RightBrace, lexeme: "}".into(), literal: None, line }); i += 1; }
+            '(' => { tokens.push(Token { token_type: Tokentypes::LeftParen, lexeme: "(".into(), literal: None, line }); i += 1; }
+            ')' => { tokens.push(Token { token_type: Tokentypes::RightParen, lexeme: ")".into(), literal: None, line }); i += 1; }
 
             // string literal
             '"' => {
+                let start = i;
                 let start_line = line;
-                let mut lexeme = String::new();
+                let mut value = String::new();
                 i += 1; // skip opening quote
                 while i < chars.len() && chars[i] != '"' {
                     if chars[i] == '\n' {
                         line += 1;
                     }
-                    lexeme.push(chars[i]);
+                    value.push(chars[i]);
                     i += 1;
                 }
                 if i >= chars.len() {
                     // get_or_insert only sets it the first time, so later errors don't move it
                     first_error_at.get_or_insert(tokens.len());
                     errors.push(format!("Unterminated string starting on line {}", start_line));
+                    continue;
                 }
                 i += 1; // skip closing quote
-                tokens.push(Token { token_type: Tokentypes::String, lexeme, line: start_line });
+                let lexeme = chars[start..i].iter().collect();
+                tokens.push(Token { token_type: Tokentypes::String, lexeme, literal: Some(LiteralValue::String(value)), line: start_line });
             }
 
             // numbers (int or decimal)
@@ -93,7 +106,15 @@ pub fn tokenizer(input: String) -> ScanResult {
                     i += 1;
                 }
                 let token_type = if is_decimal { Tokentypes::Dec } else { Tokentypes::Num };
-                tokens.push(Token { token_type, lexeme, line });
+                match lexeme.parse::<f64>() {
+                    Ok(value) if value.is_finite() => {
+                        tokens.push(Token { token_type, lexeme, literal: Some(LiteralValue::Number(value)), line });
+                    }
+                    _ => {
+                        first_error_at.get_or_insert(tokens.len());
+                        errors.push(format!("Invalid number '{}' on line {}", lexeme, line));
+                    }
+                }
             }
 
             // identifiers / keywords
@@ -120,7 +141,12 @@ pub fn tokenizer(input: String) -> ScanResult {
                     "cap"     => Tokentypes::False,
                     _         => Tokentypes::Identifier,
                 };
-                tokens.push(Token { token_type, lexeme, line });
+                let literal = match token_type {
+                    Tokentypes::True => Some(LiteralValue::Boolean(true)),
+                    Tokentypes::False => Some(LiteralValue::Boolean(false)),
+                    _ => None,
+                };
+                tokens.push(Token { token_type, lexeme, literal, line });
             }
 
             _ => {
@@ -133,6 +159,6 @@ pub fn tokenizer(input: String) -> ScanResult {
         }
     }
 
-    tokens.push(Token { token_type: Tokentypes::Eof, lexeme: String::new(), line });
+    tokens.push(Token { token_type: Tokentypes::Eof, lexeme: String::new(), literal: None, line });
     ScanResult { tokens, errors, first_error_at }
 }

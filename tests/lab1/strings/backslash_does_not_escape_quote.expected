@@ -1,0 +1,16 @@
+Token {
+    token_type: String,
+    lexeme: "\"a\\\"",
+    literal: Some(
+        String(
+            "a\\",
+        ),
+    ),
+    line: 1,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    literal: None,
+    line: 2,
+}

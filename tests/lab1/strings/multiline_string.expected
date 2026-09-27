@@ -1,0 +1,16 @@
+Token {
+    token_type: String,
+    lexeme: "\"first\nsecond\"",
+    literal: Some(
+        String(
+            "first\nsecond",
+        ),
+    ),
+    line: 1,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    literal: None,
+    line: 3,
+}

@@ -7,7 +7,7 @@
 
 ## Overview
 
-TrapScript is a dynamically typed scripting language styled on internet slang, distinguished by a pipeline-chaining operator (>>) that lets a value be threaded through a sequence of transformations and function calls without ugly nested calls or intermediate variables.
+TrapScript is a dynamically typed scripting language styled on internet slang.
 
 
 ## Host language and build
@@ -24,6 +24,7 @@ TrapScript is a dynamically typed scripting language styled on internet slang, d
 | `./run <file>` | Executes a program. Not implemented yet (Lab 4); currently prints a usage error. |
 | `./run --tokenize <file>` | Scans the file and prints its token stream to stdout, or every lexical error to stderr. |
 | `./run --parse <file>` | Parses the file and prints one tree per expression in prefix form, or every scan or syntax error to stderr. So far it handles literals, grouping, `!`, `==`, and `!=` (Lab 2 week 1). |
+| `./run --help` | Prints the supported command forms. |
 | `./run --eval <file>` | Evaluates each expression and prints its value. Not implemented yet (Lab 3). |
 | `./run` | Starts the REPL. Type code across as many lines as you like: Enter starts a new line (shown with a `... ` prompt), and a blank line submits the whole entry. Its tokens are printed, or its errors if it has any, and the prompt comes back. Line numbers count from 1 within each entry. The session ends when input closes with Ctrl+C. |
 
@@ -73,7 +74,6 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 | `/` | arithmetic | binary | left | 5 |
 | `!` | logical | unary | right | 6 |
 | `-` | arithmetic | unary | right | 6 |
-| `>>` | pipeline | binary | left | [TODO — where does chaining sit relative to arithmetic?] |
 
 ### Punctuation
 
@@ -108,7 +108,7 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 
 ## Whitespace and termination
 
-- Whitespace significant: No. `>>` is the explicit step separator regardless of line breaks. Newlines are treated as standard whitespace, allowing pipeline chains to be written on a single line or split across multiple lines for readability.
+- Whitespace significant: No. Newlines are treated as standard whitespace.
 - Statement terminator: none. Newlines are whitespace, so statement boundaries come from the grammar, not line breaks.
 - Block delimiters: curly braces `{}`
 - Grouping delimiters: parentheses `()`
@@ -149,7 +149,6 @@ primary    → NUM | DEC | STRING | "nocap" | "cap" | "(" expression ")"
 - `unary` calls itself, so unary operators chain and group from the right: `!!nocap` parses as `(! (! nocap))`.
 - **Implemented so far (Lab 2 week 1):** `expression`, `equality`, the `"!"` branch of `unary`, and `primary`. Until `comparison`, `term`, and `factor` exist, `equality` calls `unary` directly.
 - **Splitting a file into expressions:** an expression ends where the grammar says it ends, and the next one has to start on a new line. An unfinished expression continues onto the next line, so `1 ==` followed by `2` on the next line is one expression. An empty file has no expressions and is accepted.
-- `>>` is not in the grammar yet: the scanner doesn't produce it, and its precedence is still undecided.
 - TrapScript has no nil, so `primary` has no nil literal.
 
 ## Parse output format
@@ -257,22 +256,40 @@ The parser reports every syntax error in the file: after an error it skips the r
 
 
 ```
-tests/lab1/booleans.trap               nocap and cap scan as booleans; capital and nocapper stay identifiers
-tests/lab1/keywords/keywords.trap      every keyword together in one program
-tests/lab1/keywords/blanklines.trap    blank lines between code keep line numbers right
-tests/lab1/keywords/conditional.trap   ong with >= and < and a string
-tests/lab1/keywords/controlchain.trap  an ong / wait / nah chain
-tests/lab1/keywords/dec.trap           a decimal number
-tests/lab1/keywords/false.trap         the false keyword
-tests/lab1/keywords/function.trap      a motion definition with parameters and typeshi
-tests/lab1/keywords/idwithkey.trap     holder, ongoing, and spinner stay identifiers, not keywords
-tests/lab1/keywords/int.trap           an integer
-tests/lab1/keywords/nested.trap        a spin loop with a nested ong and pause
-tests/lab1/keywords/not.trap           ! before an identifier
-tests/lab1/keywords/ong.trap           a single ong block with ==
-tests/lab1/keywords/str.trap           locked with a string literal
-tests/lab1/keywords/true.trap          the true keyword
-tests/lab1/errors/errors.trap          an unexpected character and an unterminated string; exits 65
+tests/lab1/boolean_keywords_and_identifier_prefixes.trap       nocap and cap scan as booleans; capital and nocapper stay identifiers
+tests/lab1/keywords/all_keywords_and_token_categories.trap     every keyword together in one program
+tests/lab1/keywords/blank_lines_preserve_line_numbers.trap     blank lines between code keep line numbers right
+tests/lab1/keywords/condition_with_comparisons_and_string.trap ong with >= and < and a string
+tests/lab1/keywords/if_else_if_else_keyword_chain.trap         an ong / wait / nah chain
+tests/lab1/keywords/decimal_literal.trap                        a decimal number
+tests/lab1/keywords/false_keyword.trap                           the false keyword
+tests/lab1/keywords/function_parameters_and_return_keyword.trap a motion definition with parameters and typeshi
+tests/lab1/keywords/identifiers_starting_with_keywords.trap     holder, ongoing, and spinner stay identifiers, not keywords
+tests/lab1/keywords/integer_literal.trap                        an integer
+tests/lab1/keywords/nested_loop_condition_and_break.trap        a spin loop with a nested ong and pause
+tests/lab1/keywords/logical_not_before_identifier.trap         ! before an identifier
+tests/lab1/keywords/if_block_with_equality.trap                 a single ong block with ==
+tests/lab1/keywords/string_literal_in_constant_declaration.trap locked with a string literal
+tests/lab1/keywords/true_keyword.trap                            the true keyword
+tests/lab1/errors/unexpected_at_character.trap                  unexpected @ after valid tokens; exits 65
+tests/lab1/errors/unexpected_hash_character.trap                unexpected #; exits 65
+tests/lab1/errors/unterminated_multiline_string.trap            unterminated string across lines; exits 65
+tests/lab1/errors/multiple_unexpected_characters.trap          scanner reports more than one error; exits 65
+tests/lab1/empty_file.trap                                      empty source emits only EOF
+tests/lab1/strings/empty_string.trap                            empty string literal
+tests/lab1/strings/multiline_string.trap                        valid string spanning two lines
+tests/lab1/strings/backslash_does_not_escape_quote.trap         backslash is ordinary; the quote ends the string
+tests/lab1/operators/single_and_double_character.trap          single and double character operators together
+tests/lab1/operators/division_not_comment.trap                  slash between numbers is division
+tests/lab1/comments/inline_comment_preserves_next_line.trap    inline comment is discarded; next line is counted
+tests/lab1/comments/comment_at_eof_without_newline.trap        comment at EOF is discarded without a final newline
+tests/lab1/numbers/trailing_decimal_point.trap                  trailing decimal point is allowed
+tests/lab1/numbers/number_followed_by_identifier.trap           number ends before an identifier
+tests/lab1/numbers/leading_decimal_point_rejected.trap          leading decimal point is rejected; exits 65
+tests/lab1/numbers/repeated_decimal_point_rejected.trap         second decimal point is rejected; exits 65
+tests/lab1/identifiers/underscore_unicode_digit_and_case.trap  Unicode, underscores, digits, and case
+tests/lab1/identifiers/keyword_case_sensitive.trap              capitalized keyword remains an identifier
+tests/lab1/whitespace/tabs_and_crlf_line_counting.trap          tabs and CRLF preserve line numbers
 ```
 
 Run locally with:
@@ -301,16 +318,8 @@ Output:
 generic keyword set (`if`, `else`, `var`) because we wanted something fun and recognizable--that if you saw the keywords you'd immediately know it's TrapScript. Though, this trades familiarity for personality, a newcomer(in the sense that they came from a different programming language) can't guess that `hold` means variable declaration the way they could
 guess `var`, but this tradeoff is worth it because personality creates identity. Standard syntax is sterile and forgettable, but TrapScript turns writing code into an expressive, culturally distinct experience. Once you learn the slang logic, like "holding" a variable or putting a function into "motion," the syntax becomes natural and memorable. The slight learning curve gives TrapScript a unique soul instead of just being another generic Python clone.
 
-**The pipeline operator (`>>`).** Most C-family languages express a
-sequence of operations through nested function calls or reassignment
-(`f(g(h(x)))` or repeated `x = ...`). We introduced `>>` so a value can be
-threaded through a chain of transformations top-to-bottom, read in the
-order they execute, without intermediate variables. This was inspired by Unix shell pipes (`|`), modern functional pipeline operators (like Elixir's `|>`), and the internet's greentext format (`>`), where events are chained line-by-line in chronological order. Combined with the real-life concept of moving product through a chain of processing spots, passing data left-to-right (`>>`) makes complex data flows far easier to write, read, and debug.
-
 ## Known limitations
 
-- `>>` is not scanned yet: it comes out as two `>` tokens.
-- `//` comments are not skipped yet: `/` always scans as division.
 - `true` and `false` still scan as booleans alongside `nocap` and `cap`.
 - `./run <file>` without a flag prints a usage error instead of the file's contents, so `tests/lab0` fails and is left out of CI.
 - Tokens do not carry a literal value yet.
@@ -321,5 +330,5 @@ order they execute, without intermediate variables. This was inspired by Unix sh
 
 | Activity | What changed in the language |
 |---|---|
-| Lab 1 | Initial token vocabulary and keyword set defined; pipeline operator (`>>`) introduced for chained method/operator calls. |
+| Lab 1 | Initial token vocabulary and keyword set defined. |
 | Lab 2 | Drafted the expression grammar. `==` and `!=` now bind looser than `<`, `<=`, `>`, and `>=` (they shared one precedence level in Lab 1), and `!` and unary `-` sit at the tightest level. |
