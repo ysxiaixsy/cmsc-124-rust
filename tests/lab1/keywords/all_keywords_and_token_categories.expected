@@ -1,495 +1,658 @@
 Token {
     token_type: Hold,
     lexeme: "hold",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Identifier,
     lexeme: "x",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Equal,
     lexeme: "=",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Num,
     lexeme: "5",
+    literal: Some(
+        Number(
+            5.0,
+        ),
+    ),
     line: 1,
 }
 Token {
     token_type: Hold,
     lexeme: "hold",
+    literal: None,
     line: 2,
 }
 Token {
     token_type: Identifier,
     lexeme: "y",
+    literal: None,
     line: 2,
 }
 Token {
     token_type: Equal,
     lexeme: "=",
+    literal: None,
     line: 2,
 }
 Token {
     token_type: Dec,
     lexeme: "3.14",
+    literal: Some(
+        Number(
+            3.14,
+        ),
+    ),
     line: 2,
 }
 Token {
     token_type: Locked,
     lexeme: "locked",
+    literal: None,
     line: 3,
 }
 Token {
     token_type: Identifier,
     lexeme: "name",
+    literal: None,
     line: 3,
 }
 Token {
     token_type: Equal,
     lexeme: "=",
+    literal: None,
     line: 3,
 }
 Token {
     token_type: String,
-    lexeme: "trap lang",
+    lexeme: "\"trap lang\"",
+    literal: Some(
+        String(
+            "trap lang",
+        ),
+    ),
     line: 3,
 }
 Token {
     token_type: Motion,
     lexeme: "motion",
+    literal: None,
     line: 5,
 }
 Token {
     token_type: Identifier,
     lexeme: "add",
+    literal: None,
     line: 5,
 }
 Token {
     token_type: LeftParen,
     lexeme: "(",
+    literal: None,
     line: 5,
 }
 Token {
     token_type: Identifier,
     lexeme: "a",
+    literal: None,
     line: 5,
 }
 Token {
     token_type: Comma,
     lexeme: ",",
+    literal: None,
     line: 5,
 }
 Token {
     token_type: Identifier,
     lexeme: "b",
+    literal: None,
     line: 5,
 }
 Token {
     token_type: RightParen,
     lexeme: ")",
+    literal: None,
     line: 5,
 }
 Token {
     token_type: LeftBrace,
     lexeme: "{",
+    literal: None,
     line: 5,
 }
 Token {
     token_type: Typeshi,
     lexeme: "typeshi",
+    literal: None,
     line: 6,
 }
 Token {
     token_type: Identifier,
     lexeme: "a",
+    literal: None,
     line: 6,
 }
 Token {
     token_type: Plus,
     lexeme: "+",
+    literal: None,
     line: 6,
 }
 Token {
     token_type: Identifier,
     lexeme: "b",
+    literal: None,
     line: 6,
 }
 Token {
     token_type: RightBrace,
     lexeme: "}",
+    literal: None,
     line: 7,
 }
 Token {
     token_type: Ong,
     lexeme: "ong",
+    literal: None,
     line: 9,
 }
 Token {
     token_type: LeftParen,
     lexeme: "(",
+    literal: None,
     line: 9,
 }
 Token {
     token_type: Identifier,
     lexeme: "x",
+    literal: None,
     line: 9,
 }
 Token {
     token_type: EqualEqual,
     lexeme: "==",
+    literal: None,
     line: 9,
 }
 Token {
     token_type: Num,
     lexeme: "5",
+    literal: Some(
+        Number(
+            5.0,
+        ),
+    ),
     line: 9,
 }
 Token {
     token_type: RightParen,
     lexeme: ")",
+    literal: None,
     line: 9,
 }
 Token {
     token_type: LeftBrace,
     lexeme: "{",
+    literal: None,
     line: 9,
 }
 Token {
     token_type: Spittin,
     lexeme: "spittin",
+    literal: None,
     line: 10,
 }
 Token {
     token_type: String,
-    lexeme: "x is five",
+    lexeme: "\"x is five\"",
+    literal: Some(
+        String(
+            "x is five",
+        ),
+    ),
     line: 10,
 }
 Token {
     token_type: RightBrace,
     lexeme: "}",
+    literal: None,
     line: 11,
 }
 Token {
     token_type: Wait,
     lexeme: "wait",
+    literal: None,
     line: 11,
 }
 Token {
     token_type: LeftParen,
     lexeme: "(",
+    literal: None,
     line: 11,
 }
 Token {
     token_type: Identifier,
     lexeme: "x",
+    literal: None,
     line: 11,
 }
 Token {
     token_type: GreaterThan,
     lexeme: ">",
+    literal: None,
     line: 11,
 }
 Token {
     token_type: Num,
     lexeme: "3",
+    literal: Some(
+        Number(
+            3.0,
+        ),
+    ),
     line: 11,
 }
 Token {
     token_type: RightParen,
     lexeme: ")",
+    literal: None,
     line: 11,
 }
 Token {
     token_type: LeftBrace,
     lexeme: "{",
+    literal: None,
     line: 11,
 }
 Token {
     token_type: Spittin,
     lexeme: "spittin",
+    literal: None,
     line: 12,
 }
 Token {
     token_type: String,
-    lexeme: "x is bigger than three",
+    lexeme: "\"x is bigger than three\"",
+    literal: Some(
+        String(
+            "x is bigger than three",
+        ),
+    ),
     line: 12,
 }
 Token {
     token_type: RightBrace,
     lexeme: "}",
+    literal: None,
     line: 13,
 }
 Token {
     token_type: Nah,
     lexeme: "nah",
+    literal: None,
     line: 13,
 }
 Token {
     token_type: LeftBrace,
     lexeme: "{",
+    literal: None,
     line: 13,
 }
 Token {
     token_type: Spittin,
     lexeme: "spittin",
+    literal: None,
     line: 14,
 }
 Token {
     token_type: String,
-    lexeme: "fallback case",
+    lexeme: "\"fallback case\"",
+    literal: Some(
+        String(
+            "fallback case",
+        ),
+    ),
     line: 14,
 }
 Token {
     token_type: RightBrace,
     lexeme: "}",
+    literal: None,
     line: 15,
 }
 Token {
     token_type: Spin,
     lexeme: "spin",
+    literal: None,
     line: 17,
 }
 Token {
     token_type: LeftParen,
     lexeme: "(",
+    literal: None,
     line: 17,
 }
 Token {
     token_type: Identifier,
     lexeme: "x",
+    literal: None,
     line: 17,
 }
 Token {
     token_type: NotEqual,
     lexeme: "!=",
+    literal: None,
     line: 17,
 }
 Token {
     token_type: Num,
     lexeme: "0",
+    literal: Some(
+        Number(
+            0.0,
+        ),
+    ),
     line: 17,
 }
 Token {
     token_type: RightParen,
     lexeme: ")",
+    literal: None,
     line: 17,
 }
 Token {
     token_type: LeftBrace,
     lexeme: "{",
+    literal: None,
     line: 17,
 }
 Token {
     token_type: Identifier,
     lexeme: "x",
+    literal: None,
     line: 18,
 }
 Token {
     token_type: Equal,
     lexeme: "=",
+    literal: None,
     line: 18,
 }
 Token {
     token_type: Identifier,
     lexeme: "x",
+    literal: None,
     line: 18,
 }
 Token {
     token_type: Minus,
     lexeme: "-",
+    literal: None,
     line: 18,
 }
 Token {
     token_type: Num,
     lexeme: "1",
+    literal: Some(
+        Number(
+            1.0,
+        ),
+    ),
     line: 18,
 }
 Token {
     token_type: Ong,
     lexeme: "ong",
+    literal: None,
     line: 19,
 }
 Token {
     token_type: LeftParen,
     lexeme: "(",
+    literal: None,
     line: 19,
 }
 Token {
     token_type: Identifier,
     lexeme: "x",
+    literal: None,
     line: 19,
 }
 Token {
     token_type: LessThanEqual,
     lexeme: "<=",
+    literal: None,
     line: 19,
 }
 Token {
     token_type: Num,
     lexeme: "0",
+    literal: Some(
+        Number(
+            0.0,
+        ),
+    ),
     line: 19,
 }
 Token {
     token_type: RightParen,
     lexeme: ")",
+    literal: None,
     line: 19,
 }
 Token {
     token_type: LeftBrace,
     lexeme: "{",
+    literal: None,
     line: 19,
 }
 Token {
     token_type: Pause,
     lexeme: "pause",
+    literal: None,
     line: 20,
 }
 Token {
     token_type: RightBrace,
     lexeme: "}",
+    literal: None,
     line: 21,
 }
 Token {
     token_type: RightBrace,
     lexeme: "}",
+    literal: None,
     line: 22,
 }
 Token {
     token_type: Hold,
     lexeme: "hold",
+    literal: None,
     line: 24,
 }
 Token {
     token_type: Identifier,
     lexeme: "flag",
+    literal: None,
     line: 24,
 }
 Token {
     token_type: Equal,
     lexeme: "=",
+    literal: None,
     line: 24,
 }
 Token {
     token_type: True,
     lexeme: "nocap",
+    literal: Some(
+        Boolean(
+            true,
+        ),
+    ),
     line: 24,
 }
 Token {
     token_type: Hold,
     lexeme: "hold",
+    literal: None,
     line: 25,
 }
 Token {
     token_type: Identifier,
     lexeme: "other",
+    literal: None,
     line: 25,
 }
 Token {
     token_type: Equal,
     lexeme: "=",
+    literal: None,
     line: 25,
 }
 Token {
     token_type: False,
     lexeme: "cap",
+    literal: Some(
+        Boolean(
+            false,
+        ),
+    ),
     line: 25,
 }
 Token {
     token_type: Hold,
     lexeme: "hold",
+    literal: None,
     line: 26,
 }
 Token {
     token_type: Identifier,
     lexeme: "check",
+    literal: None,
     line: 26,
 }
 Token {
     token_type: Equal,
     lexeme: "=",
+    literal: None,
     line: 26,
 }
 Token {
     token_type: Not,
     lexeme: "!",
+    literal: None,
     line: 26,
 }
 Token {
     token_type: Identifier,
     lexeme: "flag",
+    literal: None,
     line: 26,
 }
 Token {
     token_type: Ong,
     lexeme: "ong",
+    literal: None,
     line: 28,
 }
 Token {
     token_type: LeftParen,
     lexeme: "(",
+    literal: None,
     line: 28,
 }
 Token {
     token_type: Identifier,
     lexeme: "x",
+    literal: None,
     line: 28,
 }
 Token {
     token_type: GreaterThanEqual,
     lexeme: ">=",
+    literal: None,
     line: 28,
 }
 Token {
     token_type: Num,
     lexeme: "1",
+    literal: Some(
+        Number(
+            1.0,
+        ),
+    ),
     line: 28,
 }
 Token {
     token_type: Identifier,
     lexeme: "y",
+    literal: None,
     line: 28,
 }
 Token {
     token_type: LessThan,
     lexeme: "<",
+    literal: None,
     line: 28,
 }
 Token {
     token_type: Num,
     lexeme: "10",
+    literal: Some(
+        Number(
+            10.0,
+        ),
+    ),
     line: 28,
 }
 Token {
     token_type: RightParen,
     lexeme: ")",
+    literal: None,
     line: 28,
 }
 Token {
     token_type: LeftBrace,
     lexeme: "{",
+    literal: None,
     line: 28,
 }
 Token {
     token_type: Spittin,
     lexeme: "spittin",
+    literal: None,
     line: 29,
 }
 Token {
     token_type: String,
-    lexeme: "combo check",
+    lexeme: "\"combo check\"",
+    literal: Some(
+        String(
+            "combo check",
+        ),
+    ),
     line: 29,
 }
 Token {
     token_type: RightBrace,
     lexeme: "}",
+    literal: None,
     line: 30,
 }
 Token {
     token_type: Eof,
     lexeme: "",
+    literal: None,
     line: 30,
 }

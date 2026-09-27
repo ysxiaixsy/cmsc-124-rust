@@ -1,30 +1,36 @@
 Token {
     token_type: Hold,
     lexeme: "hold",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Identifier,
     lexeme: "check",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Equal,
     lexeme: "=",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Not,
     lexeme: "!",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Identifier,
     lexeme: "flag",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Eof,
     lexeme: "",
+    literal: None,
     line: 1,
 }

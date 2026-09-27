@@ -1,20 +1,24 @@
 Token {
     token_type: Identifier,
     lexeme: "holder",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Identifier,
     lexeme: "ongoing",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Identifier,
     lexeme: "spinner",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Eof,
     lexeme: "",
+    literal: None,
     line: 1,
 }

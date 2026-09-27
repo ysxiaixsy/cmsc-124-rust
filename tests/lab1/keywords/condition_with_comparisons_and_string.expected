@@ -1,70 +1,96 @@
 Token {
     token_type: Ong,
     lexeme: "ong",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: LeftParen,
     lexeme: "(",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Identifier,
     lexeme: "x",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: GreaterThanEqual,
     lexeme: ">=",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Num,
     lexeme: "1",
+    literal: Some(
+        Number(
+            1.0,
+        ),
+    ),
     line: 1,
 }
 Token {
     token_type: Identifier,
     lexeme: "y",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: LessThan,
     lexeme: "<",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Num,
     lexeme: "10",
+    literal: Some(
+        Number(
+            10.0,
+        ),
+    ),
     line: 1,
 }
 Token {
     token_type: RightParen,
     lexeme: ")",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: LeftBrace,
     lexeme: "{",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Spittin,
     lexeme: "spittin",
+    literal: None,
     line: 2,
 }
 Token {
     token_type: String,
-    lexeme: "combo check",
+    lexeme: "\"combo check\"",
+    literal: Some(
+        String(
+            "combo check",
+        ),
+    ),
     line: 2,
 }
 Token {
     token_type: RightBrace,
     lexeme: "}",
+    literal: None,
     line: 3,
 }
 Token {
     token_type: Eof,
     lexeme: "",
+    literal: None,
     line: 3,
 }

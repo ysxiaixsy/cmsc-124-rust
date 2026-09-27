@@ -1,25 +1,30 @@
 Token {
     token_type: Hold,
     lexeme: "hold",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Identifier,
     lexeme: "x",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Hold,
     lexeme: "hold",
+    literal: None,
     line: 2,
 }
 Token {
     token_type: Identifier,
     lexeme: "y",
+    literal: None,
     line: 2,
 }
 Token {
     token_type: Eof,
     lexeme: "",
+    literal: None,
     line: 3,
 }

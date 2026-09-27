@@ -1,15 +1,22 @@
 Token {
     token_type: Num,
     lexeme: "42",
+    literal: Some(
+        Number(
+            42.0,
+        ),
+    ),
     line: 1,
 }
 Token {
     token_type: Identifier,
     lexeme: "name",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Eof,
     lexeme: "",
+    literal: None,
     line: 2,
 }

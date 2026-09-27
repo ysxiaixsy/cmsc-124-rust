@@ -1,0 +1,66 @@
+Token {
+    token_type: Num,
+    lexeme: "42",
+    literal: Some(
+        Number(
+            42.0,
+        ),
+    ),
+    line: 1,
+}
+Token {
+    token_type: Dec,
+    lexeme: "3.14",
+    literal: Some(
+        Number(
+            3.14,
+        ),
+    ),
+    line: 1,
+}
+Token {
+    token_type: String,
+    lexeme: "\"\"",
+    literal: Some(
+        String(
+            "",
+        ),
+    ),
+    line: 1,
+}
+Token {
+    token_type: String,
+    lexeme: "\"hi\"",
+    literal: Some(
+        String(
+            "hi",
+        ),
+    ),
+    line: 1,
+}
+Token {
+    token_type: True,
+    lexeme: "nocap",
+    literal: Some(
+        Boolean(
+            true,
+        ),
+    ),
+    line: 1,
+}
+Token {
+    token_type: False,
+    lexeme: "cap",
+    literal: Some(
+        Boolean(
+            false,
+        ),
+    ),
+    line: 1,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    literal: None,
+    line: 2,
+}

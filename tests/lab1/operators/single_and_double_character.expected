@@ -1,90 +1,108 @@
 Token {
     token_type: Equal,
     lexeme: "=",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: EqualEqual,
     lexeme: "==",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Not,
     lexeme: "!",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: NotEqual,
     lexeme: "!=",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: LessThan,
     lexeme: "<",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: LessThanEqual,
     lexeme: "<=",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: GreaterThan,
     lexeme: ">",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: GreaterThanEqual,
     lexeme: ">=",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Plus,
     lexeme: "+",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Minus,
     lexeme: "-",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Star,
     lexeme: "*",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Slash,
     lexeme: "/",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: LeftParen,
     lexeme: "(",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: RightParen,
     lexeme: ")",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: LeftBrace,
     lexeme: "{",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: RightBrace,
     lexeme: "}",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Comma,
     lexeme: ",",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Eof,
     lexeme: "",
+    literal: None,
     line: 2,
 }

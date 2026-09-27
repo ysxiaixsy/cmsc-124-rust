@@ -1,20 +1,32 @@
 Token {
     token_type: Num,
     lexeme: "8",
+    literal: Some(
+        Number(
+            8.0,
+        ),
+    ),
     line: 1,
 }
 Token {
     token_type: Slash,
     lexeme: "/",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Num,
     lexeme: "2",
+    literal: Some(
+        Number(
+            2.0,
+        ),
+    ),
     line: 1,
 }
 Token {
     token_type: Eof,
     lexeme: "",
+    literal: None,
     line: 2,
 }

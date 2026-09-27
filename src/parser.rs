@@ -1,5 +1,5 @@
 use crate::ast::{Expr, Literal};
-use crate::tokens::{Token, Tokentypes};
+use crate::tokens::{LiteralValue, Token, Tokentypes};
 
 // a syntax error, already formatted with its line: [line 1] Error at ')': Expect expression.
 pub struct ParseError {
@@ -82,15 +82,17 @@ impl Parser {
     fn primary(&mut self) -> Result<Expr, ParseError> {
         let token = self.peek().clone();
 
-        let literal = match token.token_type {
-            Tokentypes::True => Literal::Boolean(true),
-            Tokentypes::False => Literal::Boolean(false),
-            Tokentypes::String => Literal::String(token.lexeme.clone()),
-            Tokentypes::Num | Tokentypes::Dec => match token.lexeme.parse::<f64>() {
-                Ok(value) => Literal::Number(value),
-                Err(_) => return Err(self.error(&token, "Invalid number.")),
-            },
-            Tokentypes::LeftParen => {
+        let literal = match (&token.token_type, &token.literal) {
+            (Tokentypes::True | Tokentypes::False, Some(LiteralValue::Boolean(value))) => {
+                Literal::Boolean(*value)
+            }
+            (Tokentypes::String, Some(LiteralValue::String(value))) => {
+                Literal::String(value.clone())
+            }
+            (Tokentypes::Num | Tokentypes::Dec, Some(LiteralValue::Number(value))) => {
+                Literal::Number(*value)
+            }
+            (Tokentypes::LeftParen, _) => {
                 self.advance();
                 let expr = self.expression()?;
                 self.consume(Tokentypes::RightParen, "Expect ')' after expression.")?;

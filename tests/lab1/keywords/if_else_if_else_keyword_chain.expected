@@ -1,130 +1,176 @@
 Token {
     token_type: Ong,
     lexeme: "ong",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: LeftParen,
     lexeme: "(",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Identifier,
     lexeme: "x",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: EqualEqual,
     lexeme: "==",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Num,
     lexeme: "5",
+    literal: Some(
+        Number(
+            5.0,
+        ),
+    ),
     line: 1,
 }
 Token {
     token_type: RightParen,
     lexeme: ")",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: LeftBrace,
     lexeme: "{",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Spittin,
     lexeme: "spittin",
+    literal: None,
     line: 2,
 }
 Token {
     token_type: String,
-    lexeme: "x is five",
+    lexeme: "\"x is five\"",
+    literal: Some(
+        String(
+            "x is five",
+        ),
+    ),
     line: 2,
 }
 Token {
     token_type: RightBrace,
     lexeme: "}",
+    literal: None,
     line: 3,
 }
 Token {
     token_type: Wait,
     lexeme: "wait",
+    literal: None,
     line: 3,
 }
 Token {
     token_type: LeftParen,
     lexeme: "(",
+    literal: None,
     line: 3,
 }
 Token {
     token_type: Identifier,
     lexeme: "x",
+    literal: None,
     line: 3,
 }
 Token {
     token_type: GreaterThan,
     lexeme: ">",
+    literal: None,
     line: 3,
 }
 Token {
     token_type: Num,
     lexeme: "3",
+    literal: Some(
+        Number(
+            3.0,
+        ),
+    ),
     line: 3,
 }
 Token {
     token_type: RightParen,
     lexeme: ")",
+    literal: None,
     line: 3,
 }
 Token {
     token_type: LeftBrace,
     lexeme: "{",
+    literal: None,
     line: 3,
 }
 Token {
     token_type: Spittin,
     lexeme: "spittin",
+    literal: None,
     line: 4,
 }
 Token {
     token_type: String,
-    lexeme: "x is bigger than three",
+    lexeme: "\"x is bigger than three\"",
+    literal: Some(
+        String(
+            "x is bigger than three",
+        ),
+    ),
     line: 4,
 }
 Token {
     token_type: RightBrace,
     lexeme: "}",
+    literal: None,
     line: 5,
 }
 Token {
     token_type: Nah,
     lexeme: "nah",
+    literal: None,
     line: 5,
 }
 Token {
     token_type: LeftBrace,
     lexeme: "{",
+    literal: None,
     line: 5,
 }
 Token {
     token_type: Spittin,
     lexeme: "spittin",
+    literal: None,
     line: 6,
 }
 Token {
     token_type: String,
-    lexeme: "fallback case",
+    lexeme: "\"fallback case\"",
+    literal: Some(
+        String(
+            "fallback case",
+        ),
+    ),
     line: 6,
 }
 Token {
     token_type: RightBrace,
     lexeme: "}",
+    literal: None,
     line: 7,
 }
 Token {
     token_type: Eof,
     lexeme: "",
+    literal: None,
     line: 7,
 }

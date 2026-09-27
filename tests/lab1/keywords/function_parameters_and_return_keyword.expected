@@ -1,70 +1,84 @@
 Token {
     token_type: Motion,
     lexeme: "motion",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Identifier,
     lexeme: "add",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: LeftParen,
     lexeme: "(",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Identifier,
     lexeme: "a",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Comma,
     lexeme: ",",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Identifier,
     lexeme: "b",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: RightParen,
     lexeme: ")",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: LeftBrace,
     lexeme: "{",
+    literal: None,
     line: 1,
 }
 Token {
     token_type: Typeshi,
     lexeme: "typeshi",
+    literal: None,
     line: 2,
 }
 Token {
     token_type: Identifier,
     lexeme: "a",
+    literal: None,
     line: 2,
 }
 Token {
     token_type: Plus,
     lexeme: "+",
+    literal: None,
     line: 2,
 }
 Token {
     token_type: Identifier,
     lexeme: "b",
+    literal: None,
     line: 2,
 }
 Token {
     token_type: RightBrace,
     lexeme: "}",
+    literal: None,
     line: 3,
 }
 Token {
     token_type: Eof,
     lexeme: "",
+    literal: None,
     line: 3,
 }
