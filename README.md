@@ -21,12 +21,13 @@ TrapScript is a dynamically typed scripting language styled on internet slang.
 
 | Command | What it does |
 |---|---|
-| `./run <file>` | Executes a program. Not implemented yet (Lab 4); currently prints a usage error. |
+| `./run <file>` | Prints the file back unchanged, the Lab 0 behavior. From Lab 4 it executes the program instead. |
 | `./run --tokenize <file>` | Scans the file and prints its token stream to stdout, or every lexical error to stderr. |
-| `./run --parse <file>` | Parses the file and prints one tree per expression in prefix form, or every scan or syntax error to stderr. So far it handles literals, grouping, `!`, `==`, and `!=` (Lab 2 week 1). |
+| `./run --parse <file>` | Parses the file and prints one tree per expression in prefix form, or every scan or syntax error to stderr. |
 | `./run --help` | Prints the supported command forms. |
 | `./run --eval <file>` | Evaluates each expression and prints its value. Not implemented yet (Lab 3). |
-| `./run` | Starts the REPL. Type code across as many lines as you like: Enter starts a new line (shown with a `... ` prompt), and a blank line submits the whole entry. Its tokens are printed, or its errors if it has any, and the prompt comes back. Line numbers count from 1 within each entry. The session ends when input closes with Ctrl+C. |
+| `./run` | Starts the REPL at the scanner: each line you type is scanned when you press Enter, and its token stream is printed, or its errors if it has any, before the prompt comes back. Every line is handled on its own, so each one starts at line 1 and ends with its own `Eof` token. This stays the scanner REPL no matter which later stages exist. End the session with Ctrl+Z then Enter on Windows (Ctrl+D on Linux or macOS), or with Ctrl+C. |
+| `./run --parse` | Starts the REPL at the parser instead, printing one tree per line. |
 
 
 Exit codes: `0` when the file is accepted, `65` when it is rejected before running (a lexical error from the scanner or a syntax error from the parser), `70` for runtime errors (not used until Lab 3).
@@ -53,7 +54,6 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 | `spittin` | print |
 | `cap` | boolean false |
 | `nocap` | boolean true |
-| [TODO] | null / nil |
 
 
 ### Operators
@@ -89,7 +89,7 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 | number | `42`, `3.14`. A trailing dot (`1.`) is allowed; a leading dot (`.5`) is an error. | an integer for `42`, a decimal for `3.14` and `1.` |
 | string | `"hello"`. Can span multiple lines. No escape sequences: a backslash is a normal character, so `\"` ends the string. | the text between the quotes |
 | boolean | `nocap`, `cap` | `nocap` is true, `cap` is false |
-| [nil] | [spelling] | [what runtime value] |
+| nil | none: TrapScript has no nil literal so far | n/a |
 
 
 ### Identifiers
@@ -103,13 +103,12 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 - Mid-line comments: allowed. Everything from `//` to the end of the line is ignored, so a comment can follow code.
 - Block comments: not supported
 - Nesting: not supported
-- [Harness note: comment_prefix in tests/lab*/manifest.json is set to the
-  token above.]
+- Harness note: the Lab 1 and Lab 2 test folders use sidecar mode, which never reads comments. From Lab 3, `comment_prefix` in the inline-mode manifests is `//`.
 
 ## Whitespace and termination
 
-- Whitespace significant: No. Newlines are treated as standard whitespace.
-- Statement terminator: none. Newlines are whitespace, so statement boundaries come from the grammar, not line breaks.
+- Whitespace significant: only at the end of a line. Spaces and tabs separate tokens and are otherwise ignored, but a newline ends the expression on that line (see Grammar).
+- Statement terminator: the newline. One expression per line: an expression may not reach past the line it started on, and nothing else may follow it on that line.
 - Block delimiters: curly braces `{}`
 - Grouping delimiters: parentheses `()`
 
@@ -117,17 +116,34 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 
 ```
 Token {
-    token_type: Hold,
-    lexeme: "hold",
+    token_type: Num,
+    lexeme: "42",
+    literal: Some(
+        Number(
+            42.0,
+        ),
+    ),
     line: 1,
 }
 ```
 
-Each token prints in Rust's pretty debug format (`{:#?}`), five lines per token:
+Each token prints in Rust's pretty debug format (`{:#?}`), one field per line:
 
 - `token_type`: the token's category, such as `Hold`, `Identifier`, or `Num`
-- `lexeme`: the token's source text; for a string, the text between the quotes
+- `lexeme`: the exact source text, in quotes. A string's lexeme keeps its own quotes, which print escaped: `"\"hi\""`
+- `literal`: the value the token stands for. Numbers give `Some(Number(...))`, always with a decimal point (`42` gives `42.0`); strings give `Some(String(...))`, without the quotes; `nocap` and `cap` give `Some(Boolean(true))` and `Some(Boolean(false))`. Every other token has `None`
 - `line`: the line the token starts on
+
+A token with no literal, such as a keyword, prints on six lines:
+
+```
+Token {
+    token_type: Hold,
+    lexeme: "hold",
+    literal: None,
+    line: 1,
+}
+```
 
 Frozen as of Lab 1; changes are recorded in the changelog.
 
@@ -147,8 +163,8 @@ primary    → NUM | DEC | STRING | "nocap" | "cap" | "(" expression ")"
 - The rules go from loosest-binding (`equality`) to tightest (`primary`), and each rule only calls the one below it. That is what makes `!` bind tighter than `==`: `!nocap == cap` parses as `(== (! nocap) cap)`.
 - The `( ... )*` loops make every binary operator left-associative: `1 != 2 != 3` parses as `(!= (!= 1.0 2.0) 3.0)`.
 - `unary` calls itself, so unary operators chain and group from the right: `!!nocap` parses as `(! (! nocap))`.
-- **Implemented so far (Lab 2 week 1):** `expression`, `equality`, the `"!"` branch of `unary`, and `primary`. Until `comparison`, `term`, and `factor` exist, `equality` calls `unary` directly.
-- **Splitting a file into expressions:** an expression ends where the grammar says it ends, and the next one has to start on a new line. An unfinished expression continues onto the next line, so `1 ==` followed by `2` on the next line is one expression. An empty file has no expressions and is accepted.
+- Every rule above is implemented. `primary` has no identifier branch yet, so names are not expressions until variables arrive in Lab 4.
+- **Splitting a file into expressions:** one per line. An expression may not reach past the line it started on, so `1 ==` with `2` on the next line is a syntax error rather than one expression, and a line beginning with `-` starts a new expression instead of continuing the one above it. Nothing else may follow an expression on its line. An empty file has no expressions and is accepted.
 - TrapScript has no nil, so `primary` has no nil literal.
 
 ## Parse output format
@@ -224,7 +240,7 @@ Error: Unexpected character '@' on line 2
 Error: Unterminated string starting on line 3
 ```
 
-When a file has errors, `--tokenize` first prints the tokens it scanned before the first error, then every error in the file. All of it goes to stderr, so stdout stays empty for a rejected file, and the exit code is `65`. The REPL shows an entry with errors the same way.
+When a file has errors, `--tokenize` first prints the tokens it scanned before the first error, then every error in the file. All of it goes to stderr, so stdout stays empty for a rejected file, and the exit code is `65`. The REPL shows a line with errors the same way, then gives the prompt back instead of exiting.
 
 Syntax errors from `--parse` name the line and the token where parsing failed, or `end` for the end of the file:
 
@@ -248,6 +264,7 @@ The parser reports every syntax error in the file: after an error it skips the r
 
 | Folder | Activity | Mode | Flag |
 |---|---|---|---|
+| tests/lab0 | Onboarding | sidecar | none |
 | tests/lab1 | Scanner | sidecar | `--tokenize` |
 | tests/lab2 | Parser | sidecar | `--parse` |
 | tests/lab3 | Evaluator | inline | `--eval` |
@@ -290,6 +307,25 @@ tests/lab1/numbers/repeated_decimal_point_rejected.trap         second decimal p
 tests/lab1/identifiers/underscore_unicode_digit_and_case.trap  Unicode, underscores, digits, and case
 tests/lab1/identifiers/keyword_case_sensitive.trap              capitalized keyword remains an identifier
 tests/lab1/whitespace/tabs_and_crlf_line_counting.trap          tabs and CRLF preserve line numbers
+
+tests/lab2/expressions/literals.trap          every literal kind, one per line, including 1. and ""
+tests/lab2/expressions/equality.trap          == and != over booleans, numbers, and strings
+tests/lab2/expressions/associativity.trap     equality groups from the left
+tests/lab2/expressions/leftassoc.trap         - and / group from the left, where the two readings differ
+tests/lab2/expressions/unary.trap             chained !
+tests/lab2/expressions/unaryminus.trap        unary minus: chained, on a group, and beside *
+tests/lab2/expressions/precedence.trap        ! binds tighter than ==
+tests/lab2/expressions/levels.trap            three levels at once: equality over comparison over term and factor
+tests/lab2/expressions/mixed.trap             four or more levels in one expression
+tests/lab2/expressions/grouping.trap          parentheses that change the tree
+tests/lab2/expressions/redundantgroup.trap    parentheses that do not change the tree
+tests/lab2/expressions/lineboundary.trap      each line is its own expression, including one starting with -
+tests/lab2/expressions/empty.trap             an empty file is accepted with no output
+tests/lab2/errors/unclosed.trap               ( with no closing ); exits 65
+tests/lab2/errors/missingoperand.trap         a binary operator with no right operand; exits 65
+tests/lab2/errors/badstart.trap               a token that cannot begin an expression; exits 65
+tests/lab2/errors/sameline.trap               two expressions on one line; exits 65
+tests/lab2/errors/linecontinuation.trap       an expression that runs past the end of its line; exits 65
 ```
 
 Run locally with:
@@ -297,8 +333,12 @@ Run locally with:
 ```bash
 curl -sSL https://raw.githubusercontent.com/WhiteLicorice/cmsc-124-harness/v1.1/run_tests.py -o run_tests.py
 ./build.sh
+python3 run_tests.py tests/lab0
 python3 run_tests.py tests/lab1
+python3 run_tests.py tests/lab2
 ```
+
+On Windows, run these from Git Bash and use `python` instead of `python3`.
 
 ## Sample code
 
@@ -321,14 +361,14 @@ guess `var`, but this tradeoff is worth it because personality creates identity.
 ## Known limitations
 
 - `true` and `false` still scan as booleans alongside `nocap` and `cap`.
-- `./run <file>` without a flag prints a usage error instead of the file's contents, so `tests/lab0` fails and is left out of CI.
-- Tokens do not carry a literal value yet.
-- `--parse` only handles literals, grouping, `!`, `==`, and `!=` so far. `<`, `+`, `*`, unary `-`, and the rest are a syntax error until their grammar levels are added.
+- The REPL scans each line on its own, so line numbers restart at 1 on every line, and a string can't continue onto the next line: a multi-line string that works in a file is an unterminated-string error in the REPL.
+- `--parse` has no identifiers: a name like `x` is "Expect expression" until variables arrive in Lab 4.
+- A parenthesized group cannot span lines, because an expression ends at the end of its line.
 
 ## Changelog
 
 
 | Activity | What changed in the language |
 |---|---|
-| Lab 1 | Initial token vocabulary and keyword set defined. |
-| Lab 2 | Drafted the expression grammar. `==` and `!=` now bind looser than `<`, `<=`, `>`, and `>=` (they shared one precedence level in Lab 1), and `!` and unary `-` sit at the tightest level. |
+| Lab 1 | Initial token vocabulary and keyword set defined. Late in Lab 1 the token output format gained the `literal` field, and a string's lexeme started keeping its quotes, so every `tests/lab1` expectation was regenerated. |
+| Lab 2 | Drafted the expression grammar. `==` and `!=` now bind looser than `<`, `<=`, `>`, and `>=` (they shared one precedence level in Lab 1), and `!` and unary `-` sit at the tightest level. The whole ladder is now parsed, and a newline became the expression terminator: an expression ends at the end of its line, so a line starting with `-` is a new expression rather than a continuation. |
