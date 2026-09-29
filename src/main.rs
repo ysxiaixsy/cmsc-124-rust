@@ -15,7 +15,7 @@ use std::{
 };
 use tokenizer::{tokenizer, ScanResult};
 
-const USAGE: &str = "Usage:\n  ./run\n  ./run --tokenize\n  ./run <source-file>\n  ./run --tokenize <source-file>\n  ./run --parse <source-file>\n  ./run --help";
+const USAGE: &str = "Usage:\n  ./run\n  ./run --parse\n  ./run <source-file>\n  ./run --tokenize <source-file>\n  ./run --parse <source-file>\n  ./run --help";
 
 #[derive(Clone, Copy)]
 enum Stage {
@@ -26,7 +26,7 @@ enum Stage {
 }
 
 enum Command {
-    // the REPL runs one stage per session: ./run parses, ./run --tokenize scans
+    // the REPL runs one stage per session: ./run scans, ./run --parse parses
     Repl(Stage),
     File { stage: Stage, path: PathBuf },
     Help,
@@ -34,8 +34,8 @@ enum Command {
 
 fn parse_command(mut args: impl Iterator<Item = OsString>) -> Result<Command, String> {
     let Some(flag) = args.next() else {
-        // no arguments: the REPL runs the newest stage, which is the parser
-        return Ok(Command::Repl(Stage::Parse));
+        // no arguments: always the scanner REPL, whatever stages exist later on
+        return Ok(Command::Repl(Stage::Tokenize));
     };
 
     if flag == OsStr::new("--help") {
