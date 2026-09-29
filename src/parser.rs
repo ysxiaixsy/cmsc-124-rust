@@ -11,11 +11,13 @@ pub struct ParseError {
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
+    // the line the expression being parsed started on; tokens on later lines belong to the next one
+    line: usize,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Parser {
-        Parser { tokens, current: 0 }
+        Parser { tokens, current: 0, line: 1 }
     }
 
     // parses the whole file into one tree per expression, collecting every syntax error
@@ -36,8 +38,10 @@ impl Parser {
         (expressions, errors)
     }
 
-    // an expression ends where the grammar says it does, and the next one has to start on a new line
+    // one expression per line: it may not reach past the line it started on, and nothing else may
+    // follow it on that line
     fn expression_on_its_own_line(&mut self) -> Result<Expr, ParseError> {
+        self.line = self.peek().line;
         let expr = self.expression()?;
         if !self.is_at_end() && self.peek().line == self.previous().line {
             return Err(self.error(self.peek(), "Expect a new line after expression."));
@@ -52,14 +56,13 @@ impl Parser {
         self.equality()
     }
 
-    // equality → unary ( ( "!=" | "==" ) unary )*
-    // comparison, term, and factor will sit between equality and unary once they exist
+    // equality → comparison ( ( "!=" | "==" ) comparison )*
     fn equality(&mut self) -> Result<Expr, ParseError> {
-        let mut expr = self.unary()?;
+        let mut expr = self.comparison()?;
 
         while self.match_types(&[Tokentypes::NotEqual, Tokentypes::EqualEqual]) {
             let operator = self.previous().clone();
-            let right = self.unary()?;
+            let right = self.comparison()?;
             // the tree built so far becomes the left operand, so == and != group from the left
             expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
         }
@@ -67,11 +70,55 @@ impl Parser {
         Ok(expr)
     }
 
-    // unary → "!" unary | primary
-    fn unary(&mut self) -> Result<Expr, ParseError> {
-        if self.match_types(&[Tokentypes::Not]) {
+    // comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )*
+    fn comparison(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.term()?;
+
+        while self.match_types(&[
+            Tokentypes::GreaterThan,
+            Tokentypes::GreaterThanEqual,
+            Tokentypes::LessThan,
+            Tokentypes::LessThanEqual,
+        ]) {
             let operator = self.previous().clone();
-            // calling itself is what lets !!nocap nest
+            let right = self.term()?;
+            expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
+        }
+
+        Ok(expr)
+    }
+
+    // term → factor ( ( "-" | "+" ) factor )*
+    fn term(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.factor()?;
+
+        while self.match_types(&[Tokentypes::Minus, Tokentypes::Plus]) {
+            let operator = self.previous().clone();
+            let right = self.factor()?;
+            expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
+        }
+
+        Ok(expr)
+    }
+
+    // factor → unary ( ( "/" | "*" ) unary )*
+    fn factor(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.unary()?;
+
+        while self.match_types(&[Tokentypes::Slash, Tokentypes::Star]) {
+            let operator = self.previous().clone();
+            let right = self.unary()?;
+            expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
+        }
+
+        Ok(expr)
+    }
+
+    // unary → ( "!" | "-" ) unary | primary
+    fn unary(&mut self) -> Result<Expr, ParseError> {
+        if self.match_types(&[Tokentypes::Not, Tokentypes::Minus]) {
+            let operator = self.previous().clone();
+            // calling itself is what lets !!nocap and --10 nest
             let right = self.unary()?;
             return Ok(Expr::Unary { operator, right: Box::new(right) });
         }
@@ -81,6 +128,11 @@ impl Parser {
     // primary → NUM | DEC | STRING | "nocap" | "cap" | "(" expression ")"
     fn primary(&mut self) -> Result<Expr, ParseError> {
         let token = self.peek().clone();
+
+        // an operand on a later line belongs to the next expression, so the one here is unfinished
+        if token.line != self.line {
+            return Err(self.error(&token, "Expect expression."));
+        }
 
         let literal = match (&token.token_type, &token.literal) {
             (Tokentypes::True | Tokentypes::False, Some(LiteralValue::Boolean(value))) => {
@@ -128,9 +180,9 @@ impl Parser {
         }
     }
 
-    // is the current token this type? (never true for Eof)
+    // is the current token this type? (never true for Eof, or for a token on a later line)
     fn check(&self, token_type: &Tokentypes) -> bool {
-        !self.is_at_end() && &self.peek().token_type == token_type
+        !self.is_at_end() && self.peek().line == self.line && &self.peek().token_type == token_type
     }
 
     // consumes the current token only if it is one of these types; this is what a | in the grammar becomes
