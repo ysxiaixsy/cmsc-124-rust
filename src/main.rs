@@ -15,8 +15,9 @@ use std::{
 };
 use tokenizer::{tokenizer, ScanResult};
 
-const USAGE: &str = "Usage:\n  ./run\n  ./run <source-file>\n  ./run --tokenize <source-file>\n  ./run --parse <source-file>\n  ./run --help";
+const USAGE: &str = "Usage:\n  ./run\n  ./run --tokenize\n  ./run <source-file>\n  ./run --tokenize <source-file>\n  ./run --parse <source-file>\n  ./run --help";
 
+#[derive(Clone, Copy)]
 enum Stage {
     // plain ./run <file>. there is no interpreter until Lab 4, so for now it prints the file back
     Run,
@@ -25,14 +26,16 @@ enum Stage {
 }
 
 enum Command {
-    Repl,
+    // the REPL runs one stage per session: ./run parses, ./run --tokenize scans
+    Repl(Stage),
     File { stage: Stage, path: PathBuf },
     Help,
 }
 
 fn parse_command(mut args: impl Iterator<Item = OsString>) -> Result<Command, String> {
     let Some(flag) = args.next() else {
-        return Ok(Command::Repl);
+        // no arguments: the REPL runs the newest stage, which is the parser
+        return Ok(Command::Repl(Stage::Parse));
     };
 
     if flag == OsStr::new("--help") {
@@ -54,7 +57,10 @@ fn parse_command(mut args: impl Iterator<Item = OsString>) -> Result<Command, St
         (Stage::Run, Some(flag.clone()))
     };
 
-    let path = path.ok_or_else(|| format!("Missing source file after {}", flag.to_string_lossy()))?;
+    // a stage flag with no source file starts the REPL at that stage
+    let Some(path) = path else {
+        return Ok(Command::Repl(stage));
+    };
     if args.next().is_some() {
         return Err("Too many arguments: expected one source file".into());
     }
@@ -72,8 +78,8 @@ fn main() -> ExitCode {
     };
 
     match command {
-        Command::Repl => {
-            repl();
+        Command::Repl(stage) => {
+            repl(stage);
             ExitCode::SUCCESS
         }
         Command::Help => {
@@ -147,8 +153,8 @@ fn report_tokens(result: ScanResult) -> bool {
     true
 }
 
-// each submitted line is scanned on its own; an error does not end the session
-fn repl() {
+// each submitted line goes through the stage on its own; an error does not end the session
+fn repl(stage: Stage) {
     loop {
         print!("> ");
         if let Err(error) = io::stdout().flush() {
@@ -162,7 +168,11 @@ fn repl() {
             Ok(_) => {
                 // remove the line ending only; other trailing spaces may belong to a string
                 let source = line.trim_end_matches(['\r', '\n']);
-                report_tokens(tokenizer(source.to_string()));
+                match stage {
+                    Stage::Parse => report_parse(tokenizer(source.to_string())),
+                    // Run never reaches the REPL: it always comes with a source file
+                    Stage::Tokenize | Stage::Run => report_tokens(tokenizer(source.to_string())),
+                };
             }
             Err(error) => {
                 eprintln!("Error: Failed to read input: {error}");
