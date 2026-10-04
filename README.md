@@ -107,8 +107,8 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 
 ## Whitespace and termination
 
-- Whitespace significant: only at the end of a line. Spaces and tabs separate tokens and are otherwise ignored, but a newline ends the expression on that line (see Grammar).
-- Statement terminator: the newline. One expression per line: an expression may not reach past the line it started on, and nothing else may follow it on that line.
+- Whitespace significant: only at the end of a line outside a string. Spaces and tabs separate tokens and are otherwise ignored, but a newline ends the expression on that line (see Grammar).
+- Statement terminator: the newline outside a string. Each expression starts on its own line; a string token may span lines, but operators and groups may not continue onto another line.
 - Block delimiters: curly braces `{}`
 - Grouping delimiters: parentheses `()`
 
@@ -164,7 +164,7 @@ primary    → NUM | DEC | STRING | "nocap" | "cap" | "(" expression ")"
 - The `( ... )*` loops make every binary operator left-associative: `1 != 2 != 3` parses as `(!= (!= 1.0 2.0) 3.0)`.
 - `unary` calls itself, so unary operators chain and group from the right: `!!nocap` parses as `(! (! nocap))`.
 - Every rule above is implemented. `primary` has no identifier branch yet, so names are not expressions until variables arrive in Lab 4.
-- **Splitting a file into expressions:** one per line. An expression may not reach past the line it started on, so `1 ==` with `2` on the next line is a syntax error rather than one expression, and a line beginning with `-` starts a new expression instead of continuing the one above it. Nothing else may follow an expression on its line. An empty file has no expressions and is accepted.
+- **Splitting a file into expressions:** each expression starts on its own line. Operators and groups cannot continue onto the next line, so `1 ==` with `2` on the next line is a syntax error, and a line beginning with `-` starts a new expression. A multiline string is one token and may span source lines; nothing else may follow the expression on the string's closing line. An empty file has no expressions and is accepted.
 - TrapScript has no nil, so `primary` has no nil literal.
 
 ## Parse output format
@@ -178,7 +178,7 @@ That is the output for `(1 == 2) != !cap`.
 - One line per expression, in prefix form: the operator comes first, then its operands.
 - Groupings print as: `(group ...)`
 - Numbers print as: always with a decimal point, so `5` prints as `5.0` and `3.14` as `3.14`
-- Strings print in double quotes: `"hi"`
+- Strings print in double quotes with control characters and backslashes escaped: a string containing a newline prints as `"first\nsecond"` on one output line, and a literal backslash prints as `\\`
 - Booleans print as `nocap` and `cap`, even when the source said `true` or `false`
 
 ## Semantics
@@ -249,7 +249,7 @@ Syntax errors from `--parse` name the line and the token where parsing failed, o
 [line 3] Error at '+': Expect expression.
 ```
 
-The parser reports every syntax error in the file: after an error it skips the rest of that line and carries on with the next one. Like `--tokenize`, a rejected file prints nothing to stdout and exits `65`.
+The parser continues after a syntax error: it skips the rest of the failed expression's line and carries on with the next one, so separate malformed lines each produce a diagnostic. A missing operand at a line break is reported at the end of the original line. Like `--tokenize`, a rejected file prints nothing to stdout and exits `65`.
 
 
 | Failure | Exit code |
@@ -320,12 +320,15 @@ tests/lab2/expressions/mixed.trap             four or more levels in one express
 tests/lab2/expressions/grouping.trap          parentheses that change the tree
 tests/lab2/expressions/redundantgroup.trap    parentheses that do not change the tree
 tests/lab2/expressions/lineboundary.trap      each line is its own expression, including one starting with -
+tests/lab2/expressions/multiline_string_escaped.trap  multiline strings and backslashes print on one line
 tests/lab2/expressions/empty.trap             an empty file is accepted with no output
 tests/lab2/errors/unclosed.trap               ( with no closing ); exits 65
 tests/lab2/errors/missingoperand.trap         a binary operator with no right operand; exits 65
 tests/lab2/errors/badstart.trap               a token that cannot begin an expression; exits 65
 tests/lab2/errors/sameline.trap               two expressions on one line; exits 65
 tests/lab2/errors/linecontinuation.trap       an expression that runs past the end of its line; exits 65
+tests/lab2/errors/recovery_consecutive_lines.trap  consecutive bad lines recover independently; exits 65
+tests/lab2/errors/multiline_string_same_line_followup.trap  closing line cannot start another expression; exits 65
 ```
 
 Run locally with:
@@ -361,9 +364,9 @@ guess `var`, but this tradeoff is worth it because personality creates identity.
 ## Known limitations
 
 - `true` and `false` still scan as booleans alongside `nocap` and `cap`.
-- The REPL scans each line on its own, so line numbers restart at 1 on every line, and a string can't continue onto the next line: a multi-line string that works in a file is an unterminated-string error in the REPL.
+- The REPL handles each line on its own (parsing by default, scanning with `--tokenize`), so line numbers restart at 1 on every line. A string can't continue onto the next REPL input line: a multiline string that works in a file is an unterminated-string error in the REPL.
 - `--parse` has no identifiers: a name like `x` is "Expect expression" until variables arrive in Lab 4.
-- A parenthesized group cannot span lines, because an expression ends at the end of its line.
+- A parenthesized group cannot span lines, because an expression ends at the end of its line outside a string.
 
 ## Changelog
 
@@ -371,4 +374,4 @@ guess `var`, but this tradeoff is worth it because personality creates identity.
 | Activity | What changed in the language |
 |---|---|
 | Lab 1 | Initial token vocabulary and keyword set defined. Late in Lab 1 the token output format gained the `literal` field, and a string's lexeme started keeping its quotes, so every `tests/lab1` expectation was regenerated. |
-| Lab 2 | Drafted the expression grammar. `==` and `!=` now bind looser than `<`, `<=`, `>`, and `>=` (they shared one precedence level in Lab 1), and `!` and unary `-` sit at the tightest level. The whole ladder is now parsed, and a newline became the expression terminator: an expression ends at the end of its line, so a line starting with `-` is a new expression rather than a continuation. |
+| Lab 2 | Drafted the expression grammar. `==` and `!=` now bind looser than `<`, `<=`, `>`, and `>=` (they shared one precedence level in Lab 1), and `!` and unary `-` sit at the tightest level. The whole ladder is now parsed. A newline outside a string ends an expression, so a line starting with `-` is a new expression rather than a continuation. Multiline string values print with escaped line breaks. Error recovery preserves the next expression's line. |
