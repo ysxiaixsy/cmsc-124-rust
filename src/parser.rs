@@ -263,3 +263,29 @@ impl Parser {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Parser;
+    use crate::{printer, tokenizer::tokenizer};
+
+    #[test]
+    fn recovers_each_incomplete_line_and_keeps_the_final_expression() {
+        let source = "1 +\n2 +\n3 +\n4\n";
+        let (expressions, errors) = Parser::new(tokenizer(source.to_string()).tokens).parse();
+
+        assert_eq!(errors.len(), 3);
+        assert_eq!(expressions.len(), 1);
+        assert_eq!(printer::print(&expressions[0]), "4.0");
+    }
+
+    #[test]
+    fn multiline_string_occupies_its_closing_line() {
+        let source = "\"first\nsecond\" 7\n8\n";
+        let (expressions, errors) = Parser::new(tokenizer(source.to_string()).tokens).parse();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(expressions.len(), 1);
+        assert_eq!(printer::print(&expressions[0]), "8.0");
+    }
+}
