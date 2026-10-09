@@ -4,10 +4,11 @@ use crate::tokens::{LiteralValue, Token, Tokentypes};
 // a syntax error, already formatted with its line: [line 1] Error at ')': Expect expression.
 pub struct ParseError {
     pub message: String,
+    recovery_line: usize,
 }
 
 // recursive descent: one function per grammar rule, each calling the rule below it.
-// the only state is the token list and how far into it we are; the call stack tracks the nesting
+// the cursor and starting line track the expression; the call stack tracks its nesting
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
@@ -17,7 +18,11 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Parser {
-        Parser { tokens, current: 0, line: 1 }
+        Parser {
+            tokens,
+            current: 0,
+            line: 1,
+        }
     }
 
     // parses the whole file into one tree per expression, collecting every syntax error
@@ -29,8 +34,9 @@ impl Parser {
             match self.expression_on_its_own_line() {
                 Ok(expr) => expressions.push(expr),
                 Err(error) => {
+                    let recovery_line = error.recovery_line;
                     errors.push(error);
-                    self.skip_rest_of_line();
+                    self.skip_rest_of_line(recovery_line);
                 }
             }
         }
@@ -38,13 +44,16 @@ impl Parser {
         (expressions, errors)
     }
 
-    // one expression per line: it may not reach past the line it started on, and nothing else may
-    // follow it on that line
+    // each expression starts on its own line. a string may span lines, but nothing else may
+    // follow the expression on its final line
     fn expression_on_its_own_line(&mut self) -> Result<Expr, ParseError> {
         self.line = self.peek().line;
         let expr = self.expression()?;
-        if !self.is_at_end() && self.peek().line == self.previous().line {
-            return Err(self.error(self.peek(), "Expect a new line after expression."));
+        let end_line = self.previous().line + self.previous().lexeme.matches('\n').count();
+        if !self.is_at_end() && self.peek().line <= end_line {
+            let mut error = self.error(self.peek(), "Expect a new line after expression.");
+            error.recovery_line = end_line;
+            return Err(error);
         }
         Ok(expr)
     }
@@ -64,7 +73,11 @@ impl Parser {
             let operator = self.previous().clone();
             let right = self.comparison()?;
             // the tree built so far becomes the left operand, so == and != group from the left
-            expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
         }
 
         Ok(expr)
@@ -82,7 +95,11 @@ impl Parser {
         ]) {
             let operator = self.previous().clone();
             let right = self.term()?;
-            expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
         }
 
         Ok(expr)
@@ -95,7 +112,11 @@ impl Parser {
         while self.match_types(&[Tokentypes::Minus, Tokentypes::Plus]) {
             let operator = self.previous().clone();
             let right = self.factor()?;
-            expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
         }
 
         Ok(expr)
@@ -108,7 +129,11 @@ impl Parser {
         while self.match_types(&[Tokentypes::Slash, Tokentypes::Star]) {
             let operator = self.previous().clone();
             let right = self.unary()?;
-            expr = Expr::Binary { left: Box::new(expr), operator, right: Box::new(right) };
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
         }
 
         Ok(expr)
@@ -120,7 +145,10 @@ impl Parser {
             let operator = self.previous().clone();
             // calling itself is what lets !!nocap and --10 nest
             let right = self.unary()?;
-            return Ok(Expr::Unary { operator, right: Box::new(right) });
+            return Ok(Expr::Unary {
+                operator,
+                right: Box::new(right),
+            });
         }
         self.primary()
     }
@@ -131,7 +159,7 @@ impl Parser {
 
         // an operand on a later line belongs to the next expression, so the one here is unfinished
         if token.line != self.line {
-            return Err(self.error(&token, "Expect expression."));
+            return Err(self.error_at_line_end("Expect expression."));
         }
 
         let literal = match (&token.token_type, &token.literal) {
@@ -202,13 +230,15 @@ impl Parser {
             self.advance();
             return Ok(());
         }
+        if self.peek().line != self.line {
+            return Err(self.error_at_line_end(message));
+        }
         Err(self.error(self.peek(), message))
     }
 
-    // after an error, drop the rest of that line so the next line gets parsed on its own.
-    // it always consumes at least one token (or stops at Eof), so it can't loop forever
-    fn skip_rest_of_line(&mut self) {
-        let line = self.peek().line;
+    // after an error, drop only tokens on the failed expression's final line. if the next token
+    // starts a fresh line, leave it for the next parse attempt
+    fn skip_rest_of_line(&mut self, line: usize) {
         while !self.is_at_end() && self.peek().line == line {
             self.advance();
         }
@@ -220,6 +250,42 @@ impl Parser {
         } else {
             format!("'{}'", token.lexeme)
         };
-        ParseError { message: format!("[line {}] Error at {}: {}", token.line, location, message) }
+        ParseError {
+            message: format!("[line {}] Error at {}: {}", token.line, location, message),
+            recovery_line: self.line,
+        }
+    }
+
+    fn error_at_line_end(&self, message: &str) -> ParseError {
+        ParseError {
+            message: format!("[line {}] Error at end: {}", self.line, message),
+            recovery_line: self.line,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Parser;
+    use crate::{printer, tokenizer::tokenizer};
+
+    #[test]
+    fn recovers_each_incomplete_line_and_keeps_the_final_expression() {
+        let source = "1 +\n2 +\n3 +\n4\n";
+        let (expressions, errors) = Parser::new(tokenizer(source.to_string()).tokens).parse();
+
+        assert_eq!(errors.len(), 3);
+        assert_eq!(expressions.len(), 1);
+        assert_eq!(printer::print(&expressions[0]), "4.0");
+    }
+
+    #[test]
+    fn multiline_string_occupies_its_closing_line() {
+        let source = "\"first\nsecond\" 7\n8\n";
+        let (expressions, errors) = Parser::new(tokenizer(source.to_string()).tokens).parse();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(expressions.len(), 1);
+        assert_eq!(printer::print(&expressions[0]), "8.0");
     }
 }

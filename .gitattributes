@@ -1,3 +1,5 @@
 build.sh text eol=lf
 run text eol=lf
 tests/lab1/strings/multiline_string.trap text eol=lf
+tests/lab2/expressions/multiline_string_escaped.trap text eol=lf
+tests/lab2/errors/multiline_string_same_line_followup.trap text eol=lf
