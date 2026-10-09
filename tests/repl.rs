@@ -25,7 +25,7 @@ fn run_repl(args: &[&str], input: &str) -> (String, String, i32) {
 
 #[test]
 fn repl_parses_each_line_without_a_blank_line() {
-    let (stdout, stderr, code) = run_repl(&[], "42\n");
+    let (stdout, stderr, code) = run_repl(&["--parse"], "42\n");
     assert_eq!(code, 0);
     assert!(stderr.is_empty());
     assert!(stdout.starts_with("> 42.0\n"), "{stdout}");
