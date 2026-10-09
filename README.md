@@ -26,8 +26,8 @@ TrapScript is a dynamically typed scripting language styled on internet slang.
 | `./run --parse <file>` | Parses the file and prints one tree per expression in prefix form, or every scan or syntax error to stderr. |
 | `./run --help` | Prints the supported command forms. |
 | `./run --eval <file>` | Evaluates each expression and prints its value. Not implemented yet (Lab 3). |
-| `./run` | Starts the REPL at the parser: each line you type is parsed when you press Enter, and its tree is printed, or its errors if it has any, before the prompt comes back. End the session with Ctrl+Z then Enter on Windows (Ctrl+D on Linux or macOS), or with Ctrl+C. |
-| `./run --tokenize` | Starts the REPL at the scanner instead, printing the token stream of each line. Every line is handled on its own, so each one starts at line 1 and ends with its own `Eof` token. |
+| `./run` | Starts the REPL at the scanner: each line you type is scanned when you press Enter, and its token stream is printed, or its errors if it has any, before the prompt comes back. Every line is handled on its own, so each one starts at line 1 and ends with its own `Eof` token. This stays the scanner REPL no matter which later stages exist. End the session with Ctrl+Z then Enter on Windows (Ctrl+D on Linux or macOS), or with Ctrl+C. |
+| `./run --parse` | Starts the REPL at the parser instead, printing one tree per line. |
 
 
 Exit codes: `0` when the file is accepted, `65` when it is rejected before running (a lexical error from the scanner or a syntax error from the parser), `70` for runtime errors (not used until Lab 3).
