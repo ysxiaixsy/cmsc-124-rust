@@ -242,7 +242,7 @@ Error: Unterminated string starting on line 3
 
 When a file has errors, `--tokenize` first prints the tokens it scanned before the first error, then every error in the file. All of it goes to stderr, so stdout stays empty for a rejected file, and the exit code is `65`. The REPL shows a line with errors the same way, then gives the prompt back instead of exiting.
 
-Syntax errors from `--parse` name the line and the token where parsing failed, or `end` for the end of the file:
+Syntax errors from `--parse` name the line and the token where parsing failed, or `end` when the expression ran out at the end of its line or of the file:
 
 ```
 [line 1] Error at ')': Expect expression.
@@ -364,7 +364,7 @@ guess `var`, but this tradeoff is worth it because personality creates identity.
 ## Known limitations
 
 - `true` and `false` still scan as booleans alongside `nocap` and `cap`.
-- The REPL handles each line on its own (parsing by default, scanning with `--tokenize`), so line numbers restart at 1 on every line. A string can't continue onto the next REPL input line: a multiline string that works in a file is an unterminated-string error in the REPL.
+- The REPL handles each line on its own (scanning by default, parsing with `--parse`), so line numbers restart at 1 on every line. A string can't continue onto the next REPL input line: a multiline string that works in a file is an unterminated-string error in the REPL.
 - `--parse` has no identifiers: a name like `x` is "Expect expression" until variables arrive in Lab 4.
 - A parenthesized group cannot span lines, because an expression ends at the end of its line outside a string.
 
