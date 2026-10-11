@@ -48,7 +48,7 @@ fn repl_keeps_going_after_an_error() {
         stderr.contains("Unexpected character '@' on line 1"),
         "{stderr}"
     );
-    assert!(stdout.contains("42.0"), "{stdout}");
+    assert!(stdout.contains("> 42\n"), "{stdout}");
 }
 
 #[test]
@@ -56,5 +56,17 @@ fn repl_preserves_spaces_inside_a_string() {
     let (stdout, stderr, code) = run_repl(&[], "\"hi  \"\n");
     assert_eq!(code, 0);
     assert!(stderr.is_empty());
-    assert!(stdout.contains("\"hi  \""), "{stdout}");
+    assert!(stdout.contains("> hi  \n"), "{stdout}");
+}
+
+#[test]
+fn evaluator_repl_recovers_after_runtime_and_static_errors() {
+    let (stdout, stderr, code) = run_repl(&[], "1 / 0\n(1 + 2\n2 + 3 * 4\nnil\n");
+    assert_eq!(code, 0);
+    assert!(
+        stderr.contains("[line 1] Runtime error: Division by zero."),
+        "{stderr}"
+    );
+    assert!(stderr.contains("Expect ')' after expression."), "{stderr}");
+    assert!(stdout.contains("> 14\n> nil\n"), "{stdout}");
 }

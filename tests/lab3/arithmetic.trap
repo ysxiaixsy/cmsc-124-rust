@@ -1,0 +1,8 @@
+2 + 3 * 4 // expect: 14
+(2 + 3) * 4 // expect: 20
+20 - 6 - 4 // expect: 10
+24 / 4 / 2 // expect: 3
+7 / 2 // expect: 3.5
+-(2 + 3) * --2 // expect: -10
+(8 - 2) * (3 + 1) / 2 + 0.5 // expect: 12.5
+"hi" + " there" // expect: hi there
