@@ -1,8 +1,10 @@
 mod ast;
+mod evaluator;
 mod parser;
 mod printer;
-mod tokens;
 mod tokenizer;
+mod tokens;
+mod value;
 
 use parser::Parser;
 use std::{
@@ -15,7 +17,7 @@ use std::{
 };
 use tokenizer::{tokenizer, ScanResult};
 
-const USAGE: &str = "Usage:\n  ./run\n  ./run --parse\n  ./run <source-file>\n  ./run --tokenize <source-file>\n  ./run --parse <source-file>\n  ./run --help";
+const USAGE: &str = "Usage:\n  ./run\n  ./run --tokenize\n  ./run --parse\n  ./run <source-file>\n  ./run --tokenize <source-file>\n  ./run --parse <source-file>\n  ./run --eval <source-file>\n  ./run --eval\n  ./run --help";
 
 #[derive(Clone, Copy)]
 enum Stage {
@@ -23,10 +25,11 @@ enum Stage {
     Run,
     Tokenize,
     Parse,
+    Eval,
 }
 
 enum Command {
-    // the REPL runs one stage per session: ./run scans, ./run --parse parses
+    // each REPL session runs one stage; evaluation is the default
     Repl(Stage),
     File { stage: Stage, path: PathBuf },
     Help,
@@ -34,8 +37,8 @@ enum Command {
 
 fn parse_command(mut args: impl Iterator<Item = OsString>) -> Result<Command, String> {
     let Some(flag) = args.next() else {
-        // no arguments: always the scanner REPL, whatever stages exist later on
-        return Ok(Command::Repl(Stage::Tokenize));
+        // Lab 3 makes the no-argument REPL evaluate expressions
+        return Ok(Command::Repl(Stage::Eval));
     };
 
     if flag == OsStr::new("--help") {
@@ -51,6 +54,8 @@ fn parse_command(mut args: impl Iterator<Item = OsString>) -> Result<Command, St
         (Stage::Tokenize, args.next())
     } else if flag == OsStr::new("--parse") {
         (Stage::Parse, args.next())
+    } else if flag == OsStr::new("--eval") {
+        (Stage::Eval, args.next())
     } else if flag.to_string_lossy().starts_with('-') {
         return Err(format!("Unknown flag: {}", flag.to_string_lossy()));
     } else {
@@ -65,7 +70,10 @@ fn parse_command(mut args: impl Iterator<Item = OsString>) -> Result<Command, St
         return Err("Too many arguments: expected one source file".into());
     }
 
-    Ok(Command::File { stage, path: path.into() })
+    Ok(Command::File {
+        stage,
+        path: path.into(),
+    })
 }
 
 fn main() -> ExitCode {
@@ -87,8 +95,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Command::File { stage, path } => match run_file(stage, &path) {
-            Ok(true) => ExitCode::SUCCESS,
-            Ok(false) => ExitCode::from(65),
+            Ok(code) => ExitCode::from(code),
             Err(error) => {
                 eprintln!("Error: Failed to read '{}': {error}", path.display());
                 ExitCode::from(65)
@@ -97,16 +104,56 @@ fn main() -> ExitCode {
     }
 }
 
-fn run_file(stage: Stage, path: &Path) -> io::Result<bool> {
+fn run_file(stage: Stage, path: &Path) -> io::Result<u8> {
     let source = fs::read_to_string(path)?;
     Ok(match stage {
         Stage::Run => {
             print!("{source}");
-            true
+            0
         }
-        Stage::Tokenize => report_tokens(tokenizer(source)),
-        Stage::Parse => report_parse(tokenizer(source)),
+        Stage::Tokenize => {
+            if report_tokens(tokenizer(source)) {
+                0
+            } else {
+                65
+            }
+        }
+        Stage::Parse => {
+            if report_parse(tokenizer(source)) {
+                0
+            } else {
+                65
+            }
+        }
+        Stage::Eval => report_eval(tokenizer(source)),
     })
+}
+
+// Validate the whole file before executing any expression. Runtime errors stop only evaluation.
+fn report_eval(result: ScanResult) -> u8 {
+    if !result.errors.is_empty() {
+        for error in result.errors {
+            eprintln!("Error: {error}");
+        }
+        return 65;
+    }
+    let (expressions, errors) = Parser::new(result.tokens).parse();
+    if !errors.is_empty() {
+        for error in errors {
+            eprintln!("{}", error.message);
+        }
+        return 65;
+    }
+    for expression in &expressions {
+        match evaluator::evaluate(expression) {
+            Ok(value) => println!("{value}"),
+            Err(error) => {
+                eprintln!("{error}");
+                return 70;
+            }
+        }
+    }
+    0
 }
 
 // parses the scanned tokens and prints one tree per expression to stdout. scan errors and syntax
@@ -169,6 +216,10 @@ fn repl(stage: Stage) {
                 // remove the line ending only; other trailing spaces may belong to a string
                 let source = line.trim_end_matches(['\r', '\n']);
                 match stage {
+                    Stage::Eval => {
+                        report_eval(tokenizer(source.to_string()));
+                        true
+                    }
                     Stage::Parse => report_parse(tokenizer(source.to_string())),
                     // Run never reaches the REPL: it always comes with a source file
                     Stage::Tokenize | Stage::Run => report_tokens(tokenizer(source.to_string())),

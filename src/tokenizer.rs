@@ -139,6 +139,7 @@ pub fn tokenizer(input: String) -> ScanResult {
                     "false"   => Tokentypes::False,
                     "nocap"   => Tokentypes::True,
                     "cap"     => Tokentypes::False,
+                    "nil"     => Tokentypes::Nil,
                     _         => Tokentypes::Identifier,
                 };
                 let literal = match token_type {

@@ -153,7 +153,7 @@ impl Parser {
         self.primary()
     }
 
-    // primary → NUM | DEC | STRING | "nocap" | "cap" | "(" expression ")"
+    // primary → NUM | DEC | STRING | "nocap" | "cap" | "nil" | "(" expression ")"
     fn primary(&mut self) -> Result<Expr, ParseError> {
         let token = self.peek().clone();
 
@@ -163,6 +163,7 @@ impl Parser {
         }
 
         let literal = match (&token.token_type, &token.literal) {
+            (Tokentypes::Nil, _) => Literal::Nil,
             (Tokentypes::True | Tokentypes::False, Some(LiteralValue::Boolean(value))) => {
                 Literal::Boolean(*value)
             }
