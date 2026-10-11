@@ -25,12 +25,14 @@ TrapScript is a dynamically typed scripting language styled on internet slang.
 | `./run --tokenize <file>` | Scans the file and prints its token stream to stdout, or every lexical error to stderr. |
 | `./run --parse <file>` | Parses the file and prints one tree per expression in prefix form, or every scan or syntax error to stderr. |
 | `./run --help` | Prints the supported command forms. |
-| `./run --eval <file>` | Evaluates each expression and prints its value. Not implemented yet (Lab 3). |
-| `./run` | Starts the REPL at the scanner: each line you type is scanned when you press Enter, and its token stream is printed, or its errors if it has any, before the prompt comes back. Every line is handled on its own, so each one starts at line 1 and ends with its own `Eof` token. This stays the scanner REPL no matter which later stages exist. End the session with Ctrl+Z then Enter on Windows (Ctrl+D on Linux or macOS), or with Ctrl+C. |
+| `./run --eval <file>` | Evaluates literals, grouping, unary minus, and arithmetic, printing each result (Lab 3 Week 1). |
+| `./run` | Starts the evaluator REPL. Each input line prints its computed value; static and runtime errors report a diagnostic and return the prompt. End with Ctrl+Z then Enter on Windows, or Ctrl+D on Linux/macOS. |
+| `./run --tokenize` | Starts the scanner REPL. |
+| `./run --eval` | Starts the evaluator REPL explicitly. |
 | `./run --parse` | Starts the REPL at the parser instead, printing one tree per line. |
 
 
-Exit codes: `0` when the file is accepted, `65` when it is rejected before running (a lexical error from the scanner or a syntax error from the parser), `70` for runtime errors (not used until Lab 3).
+Exit codes: `0` when the file is accepted, `65` when it is rejected before running (a lexical error from the scanner or a syntax error from the parser), `70` for runtime errors.
 
 ## File extension
 
@@ -52,6 +54,7 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 | `pause` | break |
 | `typeshi` | return |
 | `spittin` | print |
+| `nil` | absence of a value |
 | `cap` | boolean false |
 | `nocap` | boolean true |
 
@@ -86,10 +89,10 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 
 | Kind | Syntax | Produces |
 |---|---|---|
-| number | `42`, `3.14`. A trailing dot (`1.`) is allowed; a leading dot (`.5`) is an error. | an integer for `42`, a decimal for `3.14` and `1.` |
+| number | `42`, `3.14`. A trailing dot (`1.`) is allowed; a leading dot (`.5`) is an error. | an `f64` value in all cases; token categories distinguish integer and decimal spellings |
 | string | `"hello"`. Can span multiple lines. No escape sequences: a backslash is a normal character, so `\"` ends the string. | the text between the quotes |
 | boolean | `nocap`, `cap` | `nocap` is true, `cap` is false |
-| nil | none: TrapScript has no nil literal so far | n/a |
+| nil | `nil` | the absence of a value |
 
 
 ### Identifiers
@@ -156,7 +159,7 @@ comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term       → factor ( ( "-" | "+" ) factor )*
 factor     → unary ( ( "/" | "*" ) unary )*
 unary      → ( "!" | "-" ) unary | primary
-primary    → NUM | DEC | STRING | "nocap" | "cap" | "(" expression ")"
+primary    → NUM | DEC | STRING | "nocap" | "cap" | "nil" | "(" expression ")"
 ```
 
 - Quoted terminals are tokens. `NUM`, `DEC`, and `STRING` are the scanner's integer, decimal, and string tokens. `true` and `false` produce the same tokens as `nocap` and `cap` for now (see known limitations).
@@ -165,7 +168,7 @@ primary    → NUM | DEC | STRING | "nocap" | "cap" | "(" expression ")"
 - `unary` calls itself, so unary operators chain and group from the right: `!!nocap` parses as `(! (! nocap))`.
 - Every rule above is implemented. `primary` has no identifier branch yet, so names are not expressions until variables arrive in Lab 4.
 - **Splitting a file into expressions:** each expression starts on its own line. Operators and groups cannot continue onto the next line, so `1 ==` with `2` on the next line is a syntax error, and a line beginning with `-` starts a new expression. A multiline string is one token and may span source lines; nothing else may follow the expression on the string's closing line. An empty file has no expressions and is accepted.
-- TrapScript has no nil, so `primary` has no nil literal.
+- `nil` is a literal, introduced in Lab 3. Its token has type `Nil` and no payload; its AST node is `Literal::Nil`.
 
 ## Parse output format
 
@@ -185,28 +188,41 @@ That is the output for `(1 == 2) != !cap`.
 
 ### Values and types
 
-[What runtime values exist, and how they are represented in the host
-language.]
+Runtime values use a Rust tagged union, `Value`, with `Number(f64)`,
+`String(String)`, `Boolean(bool)`, and `Nil` variants. One return type can hold
+any TrapScript value; matching a variant checks its type and extracts its data.
+This fits Rust's exhaustive pattern matching and the scanner's existing `f64`
+representation without downcasting or adding a second numeric type.
+
+AST `Literal` describes source syntax; `Value` also represents computed results.
+The evaluator converts literals to values and recursively evaluates child nodes
+before their parent. Binary operands evaluate left to right. Runtime failures
+propagate through `Result<Value, RuntimeError>` with the operator token for its line.
+
+Week 1 supports all four literal types, grouping, unary minus, and `+ - * /`.
+Logical not, comparisons, and equality still parse but produce an explicit
+unsupported-operator runtime error until Week 2.
 
 ### Value printing
 
-- Numbers: [e.g. 5 rather than 5.0]
-- Nil: [spelling]
-- Strings: [with or without quotes]
+- Numbers: Rust display formatting (`5` rather than `5.0`, `3.5` for fractions). Floating-point precision and overflow follow `f64`.
+- Nil: `nil`.
+- Strings: contents without quotes, preserving spaces and line breaks.
+- Booleans: `nocap` and `cap`.
+- Parse output keeps its existing debug representation, including `5.0` and quoted strings.
 
 ### Truthiness
 
-[The complete rule. Which values are false in a condition; everything else is
-true.]
+Selected rule for Week 2: only `cap` and `nil` are falsey; all other values, including zero and the empty string, are truthy. Logical not is not implemented in Week 1.
 
 ### Operator semantics
 
-- Arithmetic: [accepted operand types]
-- `+` on strings: [concatenation, error, or coercion]
-- Mixed types: [what happens]
-- Comparison: [accepted operand types]
-- Equality across types: [false, or an error]
-- Division by zero: [value produced, or runtime error]
+- Arithmetic: numbers only, including unary minus. Division uses floating-point arithmetic.
+- `+` on strings: concatenates two strings.
+- Mixed types: runtime error; no implicit coercion.
+- Comparison: planned for Week 2, numbers only.
+- Equality across types: planned for Week 2, false rather than coercion.
+- Division by zero: runtime error, including negative zero.
 
 ### Scope and bindings
 
@@ -256,7 +272,7 @@ The parser continues after a syntax error: it skips the rest of the failed expre
 |---|---|
 | lexical error: unexpected character or unterminated string | 65 |
 | syntax error: a missing `)`, a missing operand, or a token that can't start an expression | 65 |
-| [runtime error] | 70 |
+| runtime type error, division by zero, or an operator deferred to Week 2 | 70 |
 
 
 ## Testing conventions
@@ -339,6 +355,7 @@ curl -sSL https://raw.githubusercontent.com/WhiteLicorice/cmsc-124-harness/v1.1/
 python3 run_tests.py tests/lab0
 python3 run_tests.py tests/lab1
 python3 run_tests.py tests/lab2
+python3 run_tests.py tests/lab3
 ```
 
 On Windows, run these from Git Bash and use `python` instead of `python3`.
@@ -346,13 +363,19 @@ On Windows, run these from Git Bash and use `python` instead of `python3`.
 ## Sample code
 
 ```
-[a short program]
+2 + 3 * 4
+(2 + 3) * 4
+"hi" + " there"
+nil
 ```
 
-Output:
+Output from `./run --eval <file>`:
 
 ```
-[its output]
+14
+20
+hi there
+nil
 ```
 
 ## Design rationale
@@ -364,7 +387,7 @@ guess `var`, but this tradeoff is worth it because personality creates identity.
 ## Known limitations
 
 - `true` and `false` still scan as booleans alongside `nocap` and `cap`.
-- The REPL handles each line on its own (scanning by default, parsing with `--parse`), so line numbers restart at 1 on every line. A string can't continue onto the next REPL input line: a multiline string that works in a file is an unterminated-string error in the REPL.
+- The REPL handles each line on its own (evaluating by default, scanning with `--tokenize`, parsing with `--parse`), so line numbers restart at 1 on every line. A string can't continue onto the next REPL input line: a multiline string that works in a file is an unterminated-string error in the REPL.
 - `--parse` has no identifiers: a name like `x` is "Expect expression" until variables arrive in Lab 4.
 - A parenthesized group cannot span lines, because an expression ends at the end of its line outside a string.
 
@@ -375,3 +398,12 @@ guess `var`, but this tradeoff is worth it because personality creates identity.
 |---|---|
 | Lab 1 | Initial token vocabulary and keyword set defined. Late in Lab 1 the token output format gained the `literal` field, and a string's lexeme started keeping its quotes, so every `tests/lab1` expectation was regenerated. |
 | Lab 2 | Drafted the expression grammar. `==` and `!=` now bind looser than `<`, `<=`, `>`, and `>=` (they shared one precedence level in Lab 1), and `!` and unary `-` sit at the tightest level. The whole ladder is now parsed. A newline outside a string ends an expression, so a line starting with `-` is a new expression rather than a continuation. Multiline string values print with escaped line breaks. Error recovery preserves the next expression's line. |
+
+### Lab 3 Week 1 progress
+
+The value representation, literal evaluation, grouping, and arithmetic are implemented.
+`tests/lab3/` uses inline expectations for literals, precedence, associativity,
+string addition, runtime failures, and static rejection before any evaluation.
+Runtime errors use `[line N] Runtime error: message` on stderr, stop file evaluation
+with exit 70, and leave the REPL usable. CI now runs Labs 0 through 3.
+Logical not, comparisons, equality, and their full test coverage remain Week 2 work.
