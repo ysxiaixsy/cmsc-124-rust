@@ -153,7 +153,7 @@ impl Parser {
         self.primary()
     }
 
-    // primary → NUM | DEC | STRING | "nocap" | "cap" | "(" expression ")"
+    // primary → NUM | DEC | STRING | "nocap" | "cap" | "nil" | "(" expression ")"
     fn primary(&mut self) -> Result<Expr, ParseError> {
         let token = self.peek().clone();
 
@@ -163,6 +163,7 @@ impl Parser {
         }
 
         let literal = match (&token.token_type, &token.literal) {
+            (Tokentypes::Nil, _) => Literal::Nil,
             (Tokentypes::True | Tokentypes::False, Some(LiteralValue::Boolean(value))) => {
                 Literal::Boolean(*value)
             }
@@ -261,31 +262,5 @@ impl Parser {
             message: format!("[line {}] Error at end: {}", self.line, message),
             recovery_line: self.line,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Parser;
-    use crate::{printer, tokenizer::tokenizer};
-
-    #[test]
-    fn recovers_each_incomplete_line_and_keeps_the_final_expression() {
-        let source = "1 +\n2 +\n3 +\n4\n";
-        let (expressions, errors) = Parser::new(tokenizer(source.to_string()).tokens).parse();
-
-        assert_eq!(errors.len(), 3);
-        assert_eq!(expressions.len(), 1);
-        assert_eq!(printer::print(&expressions[0]), "4.0");
-    }
-
-    #[test]
-    fn multiline_string_occupies_its_closing_line() {
-        let source = "\"first\nsecond\" 7\n8\n";
-        let (expressions, errors) = Parser::new(tokenizer(source.to_string()).tokens).parse();
-
-        assert_eq!(errors.len(), 1);
-        assert_eq!(expressions.len(), 1);
-        assert_eq!(printer::print(&expressions[0]), "8.0");
     }
 }

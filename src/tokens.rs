@@ -24,6 +24,7 @@ pub enum Tokentypes {
     String,
     True,
     False,
+    Nil,
 
     // keywords
     Ong,        // if

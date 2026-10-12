@@ -4,6 +4,7 @@ use crate::ast::{Expr, Literal};
 // every operator sits inside its own parentheses, so the grouping can be read straight off the text
 pub fn print(expr: &Expr) -> String {
     match expr {
+        Expr::Literal(Literal::Nil) => "nil".to_string(),
         // {:?} always prints a decimal point, so 5 comes out as 5.0 and every number looks the same
         Expr::Literal(Literal::Number(value)) => format!("{:?}", value),
         // debug escaping keeps multiline strings on one output line and backslashes unambiguous

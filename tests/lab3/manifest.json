@@ -1,0 +1,6 @@
+{
+  "ext": ".trap",
+  "flag": "--eval",
+  "mode": "inline",
+  "comment_prefix": "//"
+}
