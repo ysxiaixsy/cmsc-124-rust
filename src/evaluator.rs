@@ -6,14 +6,14 @@ use crate::value::Value;
 
 #[derive(Debug, Clone)]
 pub struct RuntimeError {
-    pub token: Token,
+    pub line: usize,
     pub message: String,
 }
 
 impl RuntimeError {
     fn new(token: &Token, message: &str) -> Self {
         Self {
-            token: token.clone(),
+            line: token.line,
             message: message.to_string(),
         }
     }
@@ -24,7 +24,7 @@ impl fmt::Display for RuntimeError {
         write!(
             f,
             "[line {}] Runtime error: {}",
-            self.token.line, self.message
+            self.line, self.message
         )
     }
 }

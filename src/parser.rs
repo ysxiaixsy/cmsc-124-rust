@@ -1,6 +1,11 @@
 use crate::ast::{Expr, Literal};
 use crate::tokens::{LiteralValue, Token, Tokentypes};
 
+// the file's AST root, with expressions in source order
+pub struct Program {
+    pub expressions: Vec<Expr>,
+}
+
 // a syntax error, already formatted with its line: [line 1] Error at ')': Expect expression.
 pub struct ParseError {
     pub message: String,
@@ -25,8 +30,8 @@ impl Parser {
         }
     }
 
-    // parses the whole file into one tree per expression, collecting every syntax error
-    pub fn parse(&mut self) -> (Vec<Expr>, Vec<ParseError>) {
+    // recovers through the whole file to collect every syntax error; returns a root only on success
+    pub fn parse(&mut self) -> Result<Program, Vec<ParseError>> {
         let mut expressions = Vec::new();
         let mut errors = Vec::new();
 
@@ -41,7 +46,11 @@ impl Parser {
             }
         }
 
-        (expressions, errors)
+        if errors.is_empty() {
+            Ok(Program { expressions })
+        } else {
+            Err(errors)
+        }
     }
 
     // each expression starts on its own line. a string may span lines, but nothing else may
