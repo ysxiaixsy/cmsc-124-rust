@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::ast::{Expr, Literal};
+use crate::ast::{Expr, Literal, Program, Stmt};
 use crate::tokens::{Token, Tokentypes};
 use crate::value::Value;
 
@@ -21,19 +21,25 @@ impl RuntimeError {
 
 impl fmt::Display for RuntimeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "[line {}] Runtime error: {}",
-            self.line, self.message
-        )
+        write!(f, "[line {}] Runtime error: {}", self.line, self.message)
     }
 }
 
 impl std::error::Error for RuntimeError {}
 
-// Walk the tree directly. Week 1 evaluates arithmetic; logical, comparison, and equality
+// emit values in source order so a later runtime failure preserves earlier output
+pub fn evaluate(program: &Program, mut emit: impl FnMut(Value)) -> Result<(), RuntimeError> {
+    for statement in &program.statements {
+        match statement {
+            Stmt::Expression(expr) => emit(evaluate_expression(expr)?),
+        }
+    }
+    Ok(())
+}
+
+// walk the tree directly. week 1 evaluates arithmetic; logical, comparison, and equality
 // operators remain valid syntax but report an unsupported-operator error at runtime.
-pub fn evaluate(expr: &Expr) -> Result<Value, RuntimeError> {
+fn evaluate_expression(expr: &Expr) -> Result<Value, RuntimeError> {
     match expr {
         Expr::Literal(literal) => Ok(match literal {
             Literal::Number(value) => Value::Number(*value),
@@ -41,9 +47,9 @@ pub fn evaluate(expr: &Expr) -> Result<Value, RuntimeError> {
             Literal::Boolean(value) => Value::Boolean(*value),
             Literal::Nil => Value::Nil,
         }),
-        Expr::Grouping(expr) => evaluate(expr),
+        Expr::Grouping(expr) => evaluate_expression(expr),
         Expr::Unary { operator, right } => {
-            let right = evaluate(right)?;
+            let right = evaluate_expression(right)?;
             match operator.token_type {
                 Tokentypes::Minus => match right {
                     Value::Number(value) => Ok(Value::Number(-value)),
@@ -57,9 +63,9 @@ pub fn evaluate(expr: &Expr) -> Result<Value, RuntimeError> {
             operator,
             right,
         } => {
-            // Evaluate in source order and propagate the first operand error.
-            let left = evaluate(left)?;
-            let right = evaluate(right)?;
+            // evaluate in source order and propagate the first operand error
+            let left = evaluate_expression(left)?;
+            let right = evaluate_expression(right)?;
             match operator.token_type {
                 Tokentypes::Plus => match (left, right) {
                     (Value::Number(left), Value::Number(right)) => Ok(Value::Number(left + right)),

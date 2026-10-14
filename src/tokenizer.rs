@@ -47,6 +47,7 @@ pub fn tokenizer(input: String) -> ScanResult {
             }
 
             // simple single-char tokens
+            ';' => { tokens.push(Token { token_type: Tokentypes::Semicolon, lexeme: ";".into(), literal: None, line }); i += 1; }
             ',' => { tokens.push(Token { token_type: Tokentypes::Comma, lexeme: ",".into(), literal: None, line }); i += 1; }
             '+' => { tokens.push(Token { token_type: Tokentypes::Plus, lexeme: "+".into(), literal: None, line }); i += 1; }
             '-' => { tokens.push(Token { token_type: Tokentypes::Minus, lexeme: "-".into(), literal: None, line }); i += 1; }

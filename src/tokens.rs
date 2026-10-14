@@ -15,6 +15,7 @@ pub enum Tokentypes {
     LeftParen,
     RightParen,
     Comma,
+    Semicolon,
     Identifier,
     Not,
     Slash,

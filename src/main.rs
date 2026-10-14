@@ -113,18 +113,15 @@ fn run_source(stage: Stage, source: String) -> u8 {
             return 65;
         }
     };
-    for expression in &program.expressions {
-        match stage {
-            Stage::Parse => println!("{}", printer::print(expression)),
-            Stage::Eval => match evaluator::evaluate(expression) {
-                Ok(value) => println!("{value}"),
-                Err(error) => {
-                    eprintln!("{error}");
-                    return 70;
-                }
-            },
-            Stage::Run | Stage::Tokenize => unreachable!(),
+    match stage {
+        Stage::Parse => printer::print(&program, |tree| println!("{tree}")),
+        Stage::Eval => {
+            if let Err(error) = evaluator::evaluate(&program, |value| println!("{value}")) {
+                eprintln!("{error}");
+                return 70;
+            }
         }
+        Stage::Run | Stage::Tokenize => unreachable!(),
     }
     0
 }
