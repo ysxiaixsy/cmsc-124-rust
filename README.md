@@ -23,13 +23,13 @@ TrapScript is a dynamically typed scripting language styled on internet slang.
 |---|---|
 | `./run <file>` | Prints the file back unchanged, the Lab 0 behavior. From Lab 4 it executes the program instead. |
 | `./run --tokenize <file>` | Scans the file and prints its token stream to stdout, or every lexical error to stderr. |
-| `./run --parse <file>` | Parses the file and prints one tree per expression in prefix form, or every scan or syntax error to stderr. |
+| `./run --parse <file>` | Parses the file and prints each expression statement in prefix form, one line per statement, or every scan or syntax error to stderr. |
 | `./run --help` | Prints the supported command forms. |
 | `./run --eval <file>` | Evaluates literals, grouping, unary minus, and arithmetic, printing each result (Lab 3 Week 1). |
-| `./run` | Starts the evaluator REPL. Each input line prints its computed value; static and runtime errors report a diagnostic and return the prompt. End with Ctrl+Z then Enter on Windows, or Ctrl+D on Linux/macOS. |
+| `./run` | Starts the evaluator REPL. Each input line is a complete program and must include a semicolon after every statement. Values print in statement order; errors report a diagnostic and return the prompt. End with Ctrl+Z then Enter on Windows, or Ctrl+D on Linux/macOS. |
 | `./run --tokenize` | Starts the scanner REPL. |
 | `./run --eval` | Starts the evaluator REPL explicitly. |
-| `./run --parse` | Starts the REPL at the parser instead, printing one tree per line. |
+| `./run --parse` | Starts the REPL at the parser instead. Each input line is a complete program; every statement needs a semicolon. It prints one expression tree per statement. |
 
 
 Exit codes: `0` when the file is accepted, `65` when it is rejected before running (a lexical error from the scanner or a syntax error from the parser), `70` for runtime errors.
@@ -83,6 +83,7 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 | Symbol | Purpose |
 |---|---|
 | `,` | separates function parameters and call arguments |
+| `;` | terminates an expression statement |
 
 ### Literals
 
@@ -110,8 +111,11 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 
 ## Whitespace and termination
 
-- Whitespace significant: only at the end of a line outside a string. Spaces and tabs separate tokens and are otherwise ignored, but a newline ends the expression on that line (see Grammar).
-- Statement terminator: the newline outside a string. Each expression starts on its own line; a string token may span lines, but operators and groups may not continue onto another line.
+- Whitespace: spaces, tabs, and newlines outside strings separate tokens and are otherwise ignored. Newlines do not end statements.
+- Statement terminator: `;` (Semicolon). Every expression statement needs one, including the final statement immediately before EOF.
+- A semicolon inside a string or a `//` comment is part of that literal or comment, not a terminator.
+- Expressions and parenthesized groups can span lines. Multiple statements can share a line. Blank and comment-only lines are allowed.
+- Empty statements are not supported: a bare or repeated semicolon is a syntax error. An empty program is accepted.
 - Block delimiters: curly braces `{}`
 - Grouping delimiters: parentheses `()`
 
@@ -153,6 +157,8 @@ Frozen as of Lab 1; changes are recorded in the changelog.
 ## Grammar
 
 ```
+program             → expressionStatement* EOF
+expressionStatement → expression ";"
 expression → equality
 equality   → comparison ( ( "!=" | "==" ) comparison )*
 comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )*
@@ -167,10 +173,12 @@ primary    → NUM | DEC | STRING | "nocap" | "cap" | "nil" | "(" expression ")"
 - The `( ... )*` loops make every binary operator left-associative: `1 != 2 != 3` parses as `(!= (!= 1.0 2.0) 3.0)`.
 - `unary` calls itself, so unary operators chain and group from the right: `!!nocap` parses as `(! (! nocap))`.
 - Every rule above is implemented. `primary` has no identifier branch yet, so names are not expressions until variables arrive in Lab 4.
-- **Splitting a file into expressions:** each expression starts on its own line. Operators and groups cannot continue onto the next line, so `1 ==` with `2` on the next line is a syntax error, and a line beginning with `-` starts a new expression. A multiline string is one token and may span source lines; nothing else may follow the expression on the string's closing line. An empty file has no expressions and is accepted.
+- **Program structure:** the parser returns one `Program` root containing an ordered list of expression-statement children. Each child contains the existing expression tree. The parser consumes the complete file through EOF; it does not return independent expression roots. Newlines are whitespace, so `1 +` followed by `2;` continues one expression, and a leading `-` on a later line can continue the preceding expression when no semicolon intervenes. A multiline string remains one literal node.
 - `nil` is a literal, introduced in Lab 3. Its token has type `Nil` and no payload; its AST node is `Literal::Nil`.
 
 ## Parse output format
+
+The program root is not printed as a wrapper. The printer visits its statement children and preserves the existing prefix expression format, with one output line per expression statement. Output line breaks do not represent separate AST roots.
 
 ```
 (!= (group (== 1.0 2.0)) (! cap))
@@ -178,7 +186,7 @@ primary    → NUM | DEC | STRING | "nocap" | "cap" | "nil" | "(" expression ")"
 
 That is the output for `(1 == 2) != !cap`.
 
-- One line per expression, in prefix form: the operator comes first, then its operands.
+- One line per expression statement, in prefix form: the operator comes first, then its operands.
 - Groupings print as: `(group ...)`
 - Numbers print as: always with a decimal point, so `5` prints as `5.0` and `3.14` as `3.14`
 - Strings print in double quotes with control characters and backslashes escaped: a string containing a newline prints as `"first\nsecond"` on one output line, and a literal backslash prints as `\\`
@@ -198,6 +206,11 @@ AST `Literal` describes source syntax; `Value` also represents computed results.
 The evaluator converts literals to values and recursively evaluates child nodes
 before their parent. Binary operands evaluate left to right. Runtime failures
 propagate through `Result<Value, RuntimeError>` with the operator token for its line.
+
+The evaluator consumes the `Program` root and visits its expression statements in
+source order. A static scan or parse error rejects the program before evaluation
+starts. A runtime error stops evaluation with exit code `70`; values from earlier
+statements have already been printed.
 
 Week 1 supports all four literal types, grouping, unary minus, and `+ - * /`.
 Logical not, comparisons, and equality still parse but produce an explicit
@@ -258,14 +271,14 @@ Error: Unterminated string starting on line 3
 
 When a file has errors, `--tokenize` first prints the tokens it scanned before the first error, then every error in the file. All of it goes to stderr, so stdout stays empty for a rejected file, and the exit code is `65`. The REPL shows a line with errors the same way, then gives the prompt back instead of exiting.
 
-Syntax errors from `--parse` name the line and the token where parsing failed, or `end` when the expression ran out at the end of its line or of the file:
+Syntax errors from `--parse` name the line and the token where parsing failed, or `end` when parsing reaches EOF:
 
 ```
 [line 1] Error at ')': Expect expression.
 [line 3] Error at '+': Expect expression.
 ```
 
-The parser continues after a syntax error: it skips the rest of the failed expression's line and carries on with the next one, so separate malformed lines each produce a diagnostic. A missing operand at a line break is reported at the end of the original line. Like `--tokenize`, a rejected file prints nothing to stdout and exits `65`.
+The parser reports syntax errors with the token line and continues recovery at a statement boundary (a semicolon) or EOF, while ensuring it makes progress. A missing semicolon, including after the last expression at EOF, is a syntax error. A missing operand is reported at the token or EOF where parsing fails. The parser publishes no program if any syntax errors occurred. Like `--tokenize`, a rejected file prints nothing to stdout and exits `65`.
 
 
 | Failure | Exit code |
@@ -314,6 +327,7 @@ tests/lab1/strings/multiline_string.trap                        valid string spa
 tests/lab1/strings/backslash_does_not_escape_quote.trap         backslash is ordinary; the quote ends the string
 tests/lab1/operators/single_and_double_character.trap          single and double character operators together
 tests/lab1/operators/division_not_comment.trap                  slash between numbers is division
+tests/lab1/operators/semicolon_boundaries.trap                  semicolon token, with semicolons inside strings and comments left literal
 tests/lab1/comments/inline_comment_preserves_next_line.trap    inline comment is discarded; next line is counted
 tests/lab1/comments/comment_at_eof_without_newline.trap        comment at EOF is discarded without a final newline
 tests/lab1/numbers/trailing_decimal_point.trap                  trailing decimal point is allowed
@@ -335,16 +349,19 @@ tests/lab2/expressions/levels.trap            three levels at once: equality ove
 tests/lab2/expressions/mixed.trap             four or more levels in one expression
 tests/lab2/expressions/grouping.trap          parentheses that change the tree
 tests/lab2/expressions/redundantgroup.trap    parentheses that do not change the tree
-tests/lab2/expressions/lineboundary.trap      each line is its own expression, including one starting with -
+tests/lab2/expressions/multiline_equality.trap  an expression continues across a newline
+tests/lab2/expressions/multiline_statements.trap expressions and groups span lines; statements share a line; a later-line minus continues the expression
 tests/lab2/expressions/multiline_string_escaped.trap  multiline strings and backslashes print on one line
 tests/lab2/expressions/empty.trap             an empty file is accepted with no output
 tests/lab2/errors/unclosed.trap               ( with no closing ); exits 65
 tests/lab2/errors/missingoperand.trap         a binary operator with no right operand; exits 65
 tests/lab2/errors/badstart.trap               a token that cannot begin an expression; exits 65
-tests/lab2/errors/sameline.trap               two expressions on one line; exits 65
-tests/lab2/errors/linecontinuation.trap       an expression that runs past the end of its line; exits 65
-tests/lab2/errors/recovery_consecutive_lines.trap  consecutive bad lines recover independently; exits 65
-tests/lab2/errors/multiline_string_same_line_followup.trap  closing line cannot start another expression; exits 65
+tests/lab2/errors/sameline.trap               adjacent expressions on one line without a semicolon; exits 65
+tests/lab2/errors/missing_final_semicolon.trap  final expression statement without a semicolon; exits 65
+tests/lab2/errors/missing_statement_semicolon.trap adjacent statements without a semicolon; exits 65
+tests/lab2/errors/empty_statements.trap        bare and repeated semicolons are rejected; exits 65
+tests/lab2/errors/recovery_statements.trap      malformed statements recover at semicolons; exits 65
+tests/lab2/errors/multiline_string_same_line_followup.trap  a multiline string expression followed by a token without a semicolon; exits 65
 ```
 
 Run locally with:
@@ -363,10 +380,10 @@ On Windows, run these from Git Bash and use `python` instead of `python3`.
 ## Sample code
 
 ```
-2 + 3 * 4
-(2 + 3) * 4
-"hi" + " there"
-nil
+2 + 3 * 4;
+(2 + 3) * 4;
+"hi" + " there";
+nil;
 ```
 
 Output from `./run --eval <file>`:
@@ -387,9 +404,8 @@ guess `var`, but this tradeoff is worth it because personality creates identity.
 ## Known limitations
 
 - `true` and `false` still scan as booleans alongside `nocap` and `cap`.
-- The REPL handles each line on its own (evaluating by default, scanning with `--tokenize`, parsing with `--parse`), so line numbers restart at 1 on every line. A string can't continue onto the next REPL input line: a multiline string that works in a file is an unterminated-string error in the REPL.
+- The REPL handles each submitted line as a complete program (evaluating by default, scanning with `--tokenize`, parsing with `--parse`), so line numbers restart at 1 on every line. Parse and evaluation input requires a semicolon after every expression statement. An unfinished expression or missing semicolon reports an error and returns to the prompt; the REPL does not buffer multiple lines into one program. A string cannot continue onto the next REPL input line: a multiline string that works in a file is an unterminated-string error in the REPL.
 - `--parse` has no identifiers: a name like `x` is "Expect expression" until variables arrive in Lab 4.
-- A parenthesized group cannot span lines, because an expression ends at the end of its line outside a string.
 
 ## Changelog
 
@@ -397,7 +413,7 @@ guess `var`, but this tradeoff is worth it because personality creates identity.
 | Activity | What changed in the language |
 |---|---|
 | Lab 1 | Initial token vocabulary and keyword set defined. Late in Lab 1 the token output format gained the `literal` field, and a string's lexeme started keeping its quotes, so every `tests/lab1` expectation was regenerated. |
-| Lab 2 | Drafted the expression grammar. `==` and `!=` now bind looser than `<`, `<=`, `>`, and `>=` (they shared one precedence level in Lab 1), and `!` and unary `-` sit at the tightest level. The whole ladder is now parsed. A newline outside a string ends an expression, so a line starting with `-` is a new expression rather than a continuation. Multiline string values print with escaped line breaks. Error recovery preserves the next expression's line. |
+| Lab 2 | Drafted the expression grammar. `==` and `!=` now bind looser than `<`, `<=`, `>`, and `>=` (they shared one precedence level in Lab 1), and `!` and unary `-` sit at the tightest level. The whole ladder is now parsed. Expression statements end with semicolons; newlines are whitespace, so expressions and groups can span lines and multiple statements can share one line. Multiline string values print with escaped line breaks. Parser recovery proceeds at semicolons or EOF. |
 
 ### Lab 3 Week 1 progress
 
