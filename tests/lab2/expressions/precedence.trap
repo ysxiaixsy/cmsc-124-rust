@@ -1,2 +1,2 @@
-!nocap == cap
-cap != !nocap
+!nocap == cap;
+cap != !nocap;

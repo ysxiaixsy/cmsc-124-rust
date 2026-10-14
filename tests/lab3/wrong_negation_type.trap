@@ -1,1 +1,1 @@
--nil // expect runtime error: Operand must be a number.
+-nil; // expect runtime error: Operand must be a number.
