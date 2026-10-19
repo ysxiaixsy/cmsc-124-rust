@@ -1,0 +1,7 @@
+!nocap; // expect: cap
+!cap; // expect: nocap
+!nil; // expect: nocap
+!"hello"; // expect: cap
+!""; // expect: cap
+!0; // expect: cap
+!!nocap; // expect: nocap
