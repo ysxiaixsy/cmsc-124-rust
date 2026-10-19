@@ -212,9 +212,9 @@ source order. A static scan or parse error rejects the program before evaluation
 starts. A runtime error stops evaluation with exit code `70`; values from earlier
 statements have already been printed.
 
-Week 1 supports all four literal types, grouping, unary minus, and `+ - * /`.
-Logical not, comparisons, and equality still parse but produce an explicit
-unsupported-operator runtime error until Week 2.
+Every operator the grammar produces now evaluates: all four literal types, grouping,
+unary minus and logical not, `+ - * /`, the four comparisons, and `==` and `!=`.
+Operators that need numbers share one check, so they report the same diagnostic.
 
 ### Value printing
 
@@ -226,15 +226,15 @@ unsupported-operator runtime error until Week 2.
 
 ### Truthiness
 
-Selected rule for Week 2: only `cap` and `nil` are falsey; all other values, including zero and the empty string, are truthy. Logical not is not implemented in Week 1.
+Only `cap` and `nil` are falsey; all other values, including zero and the empty string, are truthy. The rule lives in one function, so `!` and every later conditional answer the same way. `!` takes any value and never reports a type error. `tests/lab3/truthiness.trap` is the executable statement of this rule.
 
 ### Operator semantics
 
 - Arithmetic: numbers only, including unary minus. Division uses floating-point arithmetic.
 - `+` on strings: concatenates two strings.
 - Mixed types: runtime error; no implicit coercion.
-- Comparison: planned for Week 2, numbers only.
-- Equality across types: planned for Week 2, false rather than coercion.
+- Comparison: numbers only, on both sides; anything else is a runtime error. Returns a boolean.
+- Equality across types: any pair of values, comparing the type first, so `1 == "1"` is `cap` rather than an error. `nil` equals only `nil`, so `nil == cap` is `cap` even though both are falsey.
 - Division by zero: runtime error, including negative zero.
 
 ### Scope and bindings
@@ -415,11 +415,12 @@ guess `var`, but this tradeoff is worth it because personality creates identity.
 | Lab 1 | Initial token vocabulary and keyword set defined. Late in Lab 1 the token output format gained the `literal` field, and a string's lexeme started keeping its quotes, so every `tests/lab1` expectation was regenerated. |
 | Lab 2 | Drafted the expression grammar. `==` and `!=` now bind looser than `<`, `<=`, `>`, and `>=` (they shared one precedence level in Lab 1), and `!` and unary `-` sit at the tightest level. The whole ladder is now parsed. Expression statements end with semicolons; newlines are whitespace, so expressions and groups can span lines and multiple statements can share one line. Multiline string values print with escaped line breaks. Parser recovery proceeds at semicolons or EOF. |
 
-### Lab 3 Week 1 progress
+### Lab 3 Week 2 progress
 
-The value representation, literal evaluation, grouping, and arithmetic are implemented.
+Every operator in the grammar evaluates, with the type checks each one needs.
 `tests/lab3/` uses inline expectations for literals, precedence, associativity,
-string addition, runtime failures, and static rejection before any evaluation.
+string addition, comparison and its `<` against `<=` boundary, equality across
+matching and mismatched types, the truthiness rule under `!`, runtime failures,
+and static rejection before any evaluation.
 Runtime errors use `[line N] Runtime error: message` on stderr, stop file evaluation
-with exit 70, and leave the REPL usable. CI now runs Labs 0 through 3.
-Logical not, comparisons, equality, and their full test coverage remain Week 2 work.
+with exit 70, and leave the REPL usable. CI runs Labs 0 through 3.
