@@ -1,2 +1,2 @@
-2 + 3
-(1 + 2 // expect error: Expect ')' after expression.
+2 + 3;
+(1 + 2; // expect error: Expect ')' after expression.

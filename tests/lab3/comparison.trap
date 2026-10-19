@@ -1,0 +1,8 @@
+1 < 2; // expect: nocap
+2 < 2; // expect: cap
+2 <= 2; // expect: nocap
+3 > 2; // expect: nocap
+2 > 2; // expect: cap
+2 >= 2; // expect: nocap
+1 >= 2; // expect: cap
+-1 < 0; // expect: nocap

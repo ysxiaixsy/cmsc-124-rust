@@ -1,61 +1,52 @@
-use crate::ast::{Expr, Literal};
+use crate::ast::{Expr, Literal, Program, Stmt};
 use crate::tokens::{LiteralValue, Token, Tokentypes};
 
 // a syntax error, already formatted with its line: [line 1] Error at ')': Expect expression.
 pub struct ParseError {
     pub message: String,
-    recovery_line: usize,
 }
 
 // recursive descent: one function per grammar rule, each calling the rule below it.
-// the cursor and starting line track the expression; the call stack tracks its nesting
+// the cursor tracks the token stream; the call stack tracks expression nesting
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
-    // the line the expression being parsed started on; tokens on later lines belong to the next one
-    line: usize,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Parser {
-        Parser {
-            tokens,
-            current: 0,
-            line: 1,
-        }
+        Parser { tokens, current: 0 }
     }
 
-    // parses the whole file into one tree per expression, collecting every syntax error
-    pub fn parse(&mut self) -> (Vec<Expr>, Vec<ParseError>) {
-        let mut expressions = Vec::new();
+    // program -> expressionStatement* EOF
+    // collect every syntax error; return a root only on success
+    pub fn parse(&mut self) -> Result<Program, Vec<ParseError>> {
+        let mut statements = Vec::new();
         let mut errors = Vec::new();
 
         while !self.is_at_end() {
-            match self.expression_on_its_own_line() {
-                Ok(expr) => expressions.push(expr),
+            let statement_start = self.current;
+            match self.expression_statement() {
+                Ok(statement) => statements.push(statement),
                 Err(error) => {
-                    let recovery_line = error.recovery_line;
                     errors.push(error);
-                    self.skip_rest_of_line(recovery_line);
+                    self.synchronize(statement_start);
                 }
             }
         }
 
-        (expressions, errors)
+        if errors.is_empty() {
+            Ok(Program { statements })
+        } else {
+            Err(errors)
+        }
     }
 
-    // each expression starts on its own line. a string may span lines, but nothing else may
-    // follow the expression on its final line
-    fn expression_on_its_own_line(&mut self) -> Result<Expr, ParseError> {
-        self.line = self.peek().line;
+    // expressionStatement -> expression ";"
+    fn expression_statement(&mut self) -> Result<Stmt, ParseError> {
         let expr = self.expression()?;
-        let end_line = self.previous().line + self.previous().lexeme.matches('\n').count();
-        if !self.is_at_end() && self.peek().line <= end_line {
-            let mut error = self.error(self.peek(), "Expect a new line after expression.");
-            error.recovery_line = end_line;
-            return Err(error);
-        }
-        Ok(expr)
+        self.consume(Tokentypes::Semicolon, "Expect ';' after expression.")?;
+        Ok(Stmt::Expression(expr))
     }
 
     // ----- grammar rules, loosest-binding first -----
@@ -157,11 +148,6 @@ impl Parser {
     fn primary(&mut self) -> Result<Expr, ParseError> {
         let token = self.peek().clone();
 
-        // an operand on a later line belongs to the next expression, so the one here is unfinished
-        if token.line != self.line {
-            return Err(self.error_at_line_end("Expect expression."));
-        }
-
         let literal = match (&token.token_type, &token.literal) {
             (Tokentypes::Nil, _) => Literal::Nil,
             (Tokentypes::True | Tokentypes::False, Some(LiteralValue::Boolean(value))) => {
@@ -209,9 +195,9 @@ impl Parser {
         }
     }
 
-    // is the current token this type? (never true for Eof, or for a token on a later line)
+    // is the current token this type? (never true for Eof)
     fn check(&self, token_type: &Tokentypes) -> bool {
-        !self.is_at_end() && self.peek().line == self.line && &self.peek().token_type == token_type
+        !self.is_at_end() && &self.peek().token_type == token_type
     }
 
     // consumes the current token only if it is one of these types; this is what a | in the grammar becomes
@@ -231,17 +217,21 @@ impl Parser {
             self.advance();
             return Ok(());
         }
-        if self.peek().line != self.line {
-            return Err(self.error_at_line_end(message));
-        }
         Err(self.error(self.peek(), message))
     }
 
-    // after an error, drop only tokens on the failed expression's final line. if the next token
-    // starts a fresh line, leave it for the next parse attempt
-    fn skip_rest_of_line(&mut self, line: usize) {
-        while !self.is_at_end() && self.peek().line == line {
+    // stop after the failed statement's terminator, preserving the next statement.
+    // a delimiter already consumed by the failed production is also a recovery boundary
+    fn synchronize(&mut self, statement_start: usize) {
+        if self.current > statement_start && self.previous().token_type == Tokentypes::Semicolon {
+            return;
+        }
+        while !self.is_at_end() {
+            let is_terminator = self.peek().token_type == Tokentypes::Semicolon;
             self.advance();
+            if is_terminator {
+                return;
+            }
         }
     }
 
@@ -253,14 +243,6 @@ impl Parser {
         };
         ParseError {
             message: format!("[line {}] Error at {}: {}", token.line, location, message),
-            recovery_line: self.line,
-        }
-    }
-
-    fn error_at_line_end(&self, message: &str) -> ParseError {
-        ParseError {
-            message: format!("[line {}] Error at end: {}", self.line, message),
-            recovery_line: self.line,
         }
     }
 }

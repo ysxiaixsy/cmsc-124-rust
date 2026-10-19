@@ -1,5 +1,14 @@
 use crate::tokens::Token;
 
+// one root owns every statement in source order
+pub struct Program {
+    pub statements: Vec<Stmt>,
+}
+
+pub enum Stmt {
+    Expression(Expr),
+}
+
 // the source value a literal node holds
 #[derive(Debug, Clone)]
 pub enum Literal {

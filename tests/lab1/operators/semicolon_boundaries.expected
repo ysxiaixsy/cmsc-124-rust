@@ -1,0 +1,34 @@
+Token {
+    token_type: Semicolon,
+    lexeme: ";",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: String,
+    lexeme: "\";\"",
+    literal: Some(
+        String(
+            ";",
+        ),
+    ),
+    line: 1,
+}
+Token {
+    token_type: Semicolon,
+    lexeme: ";",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: Semicolon,
+    lexeme: ";",
+    literal: None,
+    line: 2,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    literal: None,
+    line: 3,
+}

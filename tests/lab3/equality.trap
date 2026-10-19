@@ -1,0 +1,9 @@
+1 == 1; // expect: nocap
+1 != 1; // expect: cap
+"a" == "a"; // expect: nocap
+"a" == "b"; // expect: cap
+nocap == nocap; // expect: nocap
+nil == nil; // expect: nocap
+1 == "1"; // expect: cap
+nil == cap; // expect: cap
+1 != "1"; // expect: nocap

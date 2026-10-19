@@ -1,7 +1,7 @@
-42 // expect: 42
-3.25 // expect: 3.25
-"hello" // expect: hello
-"" // expect:
-nocap // expect: nocap
-cap // expect: cap
-nil // expect: nil
+42; // expect: 42
+3.25; // expect: 3.25
+"hello"; // expect: hello
+""; // expect:
+nocap; // expect: nocap
+cap; // expect: cap
+nil; // expect: nil
