@@ -21,11 +21,11 @@ TrapScript is a dynamically typed scripting language styled on internet slang.
 
 | Command | What it does |
 |---|---|
-| `./run <file>` | Prints the file back unchanged, the Lab 0 behavior. From Lab 4 it executes the program instead. |
+| `./run <file>` | Executes the program. Statements run in source order and only `spittin` writes to stdout; a bare expression statement is evaluated and its value discarded. |
 | `./run --tokenize <file>` | Scans the file and prints its token stream to stdout, or every lexical error to stderr. |
 | `./run --parse <file>` | Parses the file and prints each expression statement in prefix form, one line per statement, or every scan or syntax error to stderr. |
 | `./run --help` | Prints the supported command forms. |
-| `./run --eval <file>` | Evaluates literals, grouping, unary minus, and arithmetic, printing each result (Lab 3 Week 1). |
+| `./run --eval <file>` | Evaluates the file and prints the value of **every** expression statement, the Lab 3 contract. Kept separate from plain `./run` so the Lab 3 tests stay meaningful now that a program speaks only through `spittin`. |
 | `./run` | Starts the evaluator REPL. Each input line is a complete program and must include a semicolon after every statement. Values print in statement order; errors report a diagnostic and return the prompt. End with Ctrl+Z then Enter on Windows, or Ctrl+D on Linux/macOS. |
 | `./run --tokenize` | Starts the scanner REPL. |
 | `./run --eval` | Starts the evaluator REPL explicitly. |
@@ -157,7 +157,9 @@ Frozen as of Lab 1; changes are recorded in the changelog.
 ## Grammar
 
 ```
-program             → expressionStatement* EOF
+program             → statement* EOF
+statement           → printStatement | expressionStatement
+printStatement      → "spittin" expression ";"
 expressionStatement → expression ";"
 expression → equality
 equality   → comparison ( ( "!=" | "==" ) comparison )*
@@ -175,6 +177,8 @@ primary    → NUM | DEC | STRING | "nocap" | "cap" | "nil" | "(" expression ")"
 - Every rule above is implemented. `primary` has no identifier branch yet, so names are not expressions until variables arrive in Lab 4.
 - **Program structure:** the parser returns one `Program` root containing an ordered list of expression-statement children. Each child contains the existing expression tree. The parser consumes the complete file through EOF; it does not return independent expression roots. Newlines are whitespace, so `1 +` followed by `2;` continues one expression, and a leading `-` on a later line can continue the preceding expression when no semicolon intervenes. A multiline string remains one literal node.
 - `nil` is a literal, introduced in Lab 3. Its token has type `Nil` and no payload; its AST node is `Literal::Nil`.
+- **Statements:** `spittin` was reserved as the output keyword from Lab 1 and is wired up in Lab 4. One token of lookahead picks the branch, so `statement` needs no backtracking. A print statement is a statement, not an expression: `spittin` cannot appear inside an expression, and `spittin spittin 1;` is a syntax error.
+- **Script mode:** running a file executes its statements in order, and only `spittin` writes to stdout. A bare expression statement is still evaluated, so its runtime errors still fire, but its value is discarded. `--eval` keeps the Lab 3 behaviour of printing every expression statement's value, which is why both entry points exist.
 
 ## Parse output format
 
@@ -423,4 +427,20 @@ string addition, comparison and its `<` against `<=` boundary, equality across
 matching and mismatched types, the truthiness rule under `!`, runtime failures,
 and static rejection before any evaluation.
 Runtime errors use `[line N] Runtime error: message` on stderr, stop file evaluation
-with exit 70, and leave the REPL usable. CI runs Labs 0 through 3.
+with exit 70, and leave the REPL usable.
+
+### Lab 4 Week 1 progress
+
+Programs are now observable from a file. `spittin` is wired up as a print statement,
+and plain `./run <file>` executes a program instead of echoing it, with only `spittin`
+writing to stdout. `--tokenize`, `--parse`, and `--eval` are unchanged, and
+`tests/lab1` through `tests/lab3` still pass.
+
+`tests/lab4/` uses inline expectations with no flag, since plain execution is what is
+under test: output of every value type, script mode discarding bare expression values,
+`expect nothing` for a file that intentionally prints nothing, a runtime error that
+exits 70, and a missing semicolon that exits 65.
+`tests/lab0/hello.src` is now a TrapScript program that prints its own expectation.
+CI runs Labs 0 through 4.
+
+Bindings, scope, and assignment arrive in Week 2.
