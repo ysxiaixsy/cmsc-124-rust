@@ -76,11 +76,6 @@ fn usage_error(message: &str) -> ExitCode {
 
 // Files and REPL lines share the same scan, parse, and evaluation path.
 fn run_source(stage: Stage, source: String) -> u8 {
-    if matches!(stage, Stage::Run) {
-        print!("{source}");
-        return 0;
-    }
-
     let scanned = tokenizer(source);
     if !scanned.errors.is_empty() {
         // Token mode also reports the tokens preceding the first scan error.
@@ -115,13 +110,18 @@ fn run_source(stage: Stage, source: String) -> u8 {
     };
     match stage {
         Stage::Parse => printer::print(&program, |tree| println!("{tree}")),
-        Stage::Eval => {
-            if let Err(error) = evaluator::evaluate(&program, |value| println!("{value}")) {
+        // the two execution modes differ only in what a bare expression statement does
+        Stage::Run | Stage::Eval => {
+            let output = match stage {
+                Stage::Eval => evaluator::Output::EveryValue,
+                _ => evaluator::Output::PrintOnly,
+            };
+            if let Err(error) = evaluator::evaluate(&program, output, |value| println!("{value}")) {
                 eprintln!("{error}");
                 return 70;
             }
         }
-        Stage::Run | Stage::Tokenize => unreachable!(),
+        Stage::Tokenize => unreachable!(),
     }
     0
 }

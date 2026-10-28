@@ -5,6 +5,8 @@ pub fn print(program: &Program, mut emit: impl FnMut(String)) {
     for statement in &program.statements {
         match statement {
             Stmt::Expression(expr) => emit(print_expression(expr)),
+            // the keyword leads, the same way an operator does, so the statement form is visible
+            Stmt::Print(expr) => emit(format!("(spittin {})", print_expression(expr))),
         }
     }
 }
