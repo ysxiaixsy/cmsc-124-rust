@@ -1,0 +1,2 @@
+spittin 1
+spittin 2; // expect error: Expect ';' after spittin value.

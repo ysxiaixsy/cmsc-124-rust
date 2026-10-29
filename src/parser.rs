@@ -26,7 +26,7 @@ impl Parser {
 
         while !self.is_at_end() {
             let statement_start = self.current;
-            match self.expression_statement() {
+            match self.statement() {
                 Ok(statement) => statements.push(statement),
                 Err(error) => {
                     errors.push(error);
@@ -40,6 +40,23 @@ impl Parser {
         } else {
             Err(errors)
         }
+    }
+
+    // statement -> printStatement | expressionStatement
+    // the leading keyword is the only thing that distinguishes them, so one token of
+    // lookahead picks the branch and no backtracking is needed
+    fn statement(&mut self) -> Result<Stmt, ParseError> {
+        if self.match_types(&[Tokentypes::Spittin]) {
+            return self.print_statement();
+        }
+        self.expression_statement()
+    }
+
+    // printStatement -> "spittin" expression ";"
+    fn print_statement(&mut self) -> Result<Stmt, ParseError> {
+        let expr = self.expression()?;
+        self.consume(Tokentypes::Semicolon, "Expect ';' after spittin value.")?;
+        Ok(Stmt::Print(expr))
     }
 
     // expressionStatement -> expression ";"

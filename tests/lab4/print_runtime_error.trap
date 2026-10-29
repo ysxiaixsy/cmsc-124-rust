@@ -1,0 +1,2 @@
+spittin 1 + 1; // expect: 2
+spittin "a" - 1; // expect runtime error: Operands must be numbers.

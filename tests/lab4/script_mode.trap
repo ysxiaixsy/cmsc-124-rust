@@ -1,0 +1,4 @@
+spittin 1; // expect: 1
+2 + 3;
+"discarded";
+spittin 3; // expect: 3

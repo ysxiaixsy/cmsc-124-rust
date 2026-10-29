@@ -7,6 +7,8 @@ pub struct Program {
 
 pub enum Stmt {
     Expression(Expr),
+    // spittin: the statement that makes a program's results observable
+    Print(Expr),
 }
 
 // the source value a literal node holds

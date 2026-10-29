@@ -27,11 +27,33 @@ impl fmt::Display for RuntimeError {
 
 impl std::error::Error for RuntimeError {}
 
+// what a bare expression statement does with its value. a `spittin` statement always emits;
+// this only decides whether an expression statement does too, which is the single difference
+// between running a program and inspecting one with --eval
+#[derive(Clone, Copy)]
+pub enum Output {
+    // --eval, the Lab 3 contract: every expression statement shows its value
+    EveryValue,
+    // plain ./run and the Lab 4 contract: a program speaks only through `spittin`
+    PrintOnly,
+}
+
 // emit values in source order so a later runtime failure preserves earlier output
-pub fn evaluate(program: &Program, mut emit: impl FnMut(Value)) -> Result<(), RuntimeError> {
+pub fn evaluate(
+    program: &Program,
+    output: Output,
+    mut emit: impl FnMut(Value),
+) -> Result<(), RuntimeError> {
     for statement in &program.statements {
         match statement {
-            Stmt::Expression(expr) => emit(evaluate_expression(expr)?),
+            // evaluated either way: the value is what gets dropped, never the work
+            Stmt::Expression(expr) => {
+                let value = evaluate_expression(expr)?;
+                if let Output::EveryValue = output {
+                    emit(value);
+                }
+            }
+            Stmt::Print(expr) => emit(evaluate_expression(expr)?),
         }
     }
     Ok(())
