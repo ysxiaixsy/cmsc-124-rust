@@ -1,6 +1,11 @@
 use crate::ast::{Expr, Literal, Program, Stmt};
 use crate::tokens::{LiteralValue, Token, Tokentypes};
 
+// the deepest an expression's tree can get. the parser, the evaluator, the printer, and
+// dropping the tree all recurse once per level, so this has to fit inside main::STACK_BYTES.
+// past it the parser reports a syntax error, because overflowing the stack aborts the process
+const MAX_NESTING: usize = 10_000;
+
 // a syntax error, already formatted with its line: [line 1] Error at ')': Expect expression.
 pub struct ParseError {
     pub message: String,
@@ -11,11 +16,18 @@ pub struct ParseError {
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
+    // how deep the tree of the current statement reaches so far: the levels above the rule
+    // that is running, plus the height of what that rule has already built
+    depth: usize,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Parser {
-        Parser { tokens, current: 0 }
+        Parser {
+            tokens,
+            current: 0,
+            depth: 0,
+        }
     }
 
     // program -> declaration* EOF
@@ -26,6 +38,7 @@ impl Parser {
 
         while !self.is_at_end() {
             let statement_start = self.current;
+            self.depth = 0;
             match self.declaration() {
                 Ok(statement) => statements.push(statement),
                 Err(error) => {
@@ -104,6 +117,7 @@ impl Parser {
 
         if self.match_types(&[Tokentypes::Equal]) {
             let equals = self.previous().clone();
+            self.nest(&equals)?;
             // calling itself is what makes a = b = 1 group from the right
             let value = self.assignment()?;
             return match expr {
@@ -120,11 +134,12 @@ impl Parser {
 
     // equality → comparison ( ( "!=" | "==" ) comparison )*
     fn equality(&mut self) -> Result<Expr, ParseError> {
+        let start = self.depth;
         let mut expr = self.comparison()?;
 
         while self.match_types(&[Tokentypes::NotEqual, Tokentypes::EqualEqual]) {
             let operator = self.previous().clone();
-            let right = self.comparison()?;
+            let right = self.right_operand(start, &operator, Self::comparison)?;
             // the tree built so far becomes the left operand, so == and != group from the left
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -138,6 +153,7 @@ impl Parser {
 
     // comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )*
     fn comparison(&mut self) -> Result<Expr, ParseError> {
+        let start = self.depth;
         let mut expr = self.term()?;
 
         while self.match_types(&[
@@ -147,7 +163,7 @@ impl Parser {
             Tokentypes::LessThanEqual,
         ]) {
             let operator = self.previous().clone();
-            let right = self.term()?;
+            let right = self.right_operand(start, &operator, Self::term)?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 operator,
@@ -160,11 +176,12 @@ impl Parser {
 
     // term → factor ( ( "-" | "+" ) factor )*
     fn term(&mut self) -> Result<Expr, ParseError> {
+        let start = self.depth;
         let mut expr = self.factor()?;
 
         while self.match_types(&[Tokentypes::Minus, Tokentypes::Plus]) {
             let operator = self.previous().clone();
-            let right = self.factor()?;
+            let right = self.right_operand(start, &operator, Self::factor)?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 operator,
@@ -177,11 +194,12 @@ impl Parser {
 
     // factor → unary ( ( "/" | "*" ) unary )*
     fn factor(&mut self) -> Result<Expr, ParseError> {
+        let start = self.depth;
         let mut expr = self.unary()?;
 
         while self.match_types(&[Tokentypes::Slash, Tokentypes::Star]) {
             let operator = self.previous().clone();
-            let right = self.unary()?;
+            let right = self.right_operand(start, &operator, Self::unary)?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 operator,
@@ -196,6 +214,7 @@ impl Parser {
     fn unary(&mut self) -> Result<Expr, ParseError> {
         if self.match_types(&[Tokentypes::Not, Tokentypes::Minus]) {
             let operator = self.previous().clone();
+            self.nest(&operator)?;
             // calling itself is what lets !!nocap and --10 nest
             let right = self.unary()?;
             return Ok(Expr::Unary {
@@ -227,6 +246,7 @@ impl Parser {
             }
             (Tokentypes::LeftParen, _) => {
                 self.advance();
+                self.nest(&token)?;
                 let expr = self.expression()?;
                 self.consume(Tokentypes::RightParen, "Expect ')' after expression.")?;
                 return Ok(Expr::Grouping(Box::new(expr)));
@@ -236,6 +256,42 @@ impl Parser {
 
         self.advance();
         Ok(Expr::Literal(literal))
+    }
+
+    // ----- nesting: keeps the tree's depth inside MAX_NESTING -----
+
+    // what a binary rule calls for each right operand. the loops never recurse on the left
+    // spine, but each operator still sits on top of everything built so far, so 1 + 1 + 1 is a
+    // deep tree. the operand starts back at this rule's own level, one below its operator, and
+    // whichever side reached further decides the depth. that way (a) + (b) counts as the deeper
+    // of the two, while (a + b) + c keeps growing what the group already built
+    fn right_operand(
+        &mut self,
+        start: usize,
+        operator: &Token,
+        operand: fn(&mut Self) -> Result<Expr, ParseError>,
+    ) -> Result<Expr, ParseError> {
+        let left_depth = self.depth;
+        self.depth = start;
+        self.nest(operator)?;
+        let right = operand(self)?;
+        self.depth = self.depth.max(left_depth + 1);
+        self.check_nesting(operator)?;
+        Ok(right)
+    }
+
+    // one level deeper, for anything that recurses: a group, a unary operand, or an assignment
+    fn nest(&mut self, token: &Token) -> Result<(), ParseError> {
+        self.depth += 1;
+        self.check_nesting(token)
+    }
+
+    fn check_nesting(&self, token: &Token) -> Result<(), ParseError> {
+        if self.depth > MAX_NESTING {
+            let message = format!("Expression nested too deeply (limit is {MAX_NESTING} levels).");
+            return Err(self.error(token, &message));
+        }
+        Ok(())
     }
 
     // ----- helpers: the token-level versions of the scanner's character helpers -----

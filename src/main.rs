@@ -14,10 +14,15 @@ use std::{
     io::{self, Write},
     path::Path,
     process::ExitCode,
+    thread,
 };
 use tokenizer::tokenizer;
 
 const USAGE: &str = "Usage:\n  ./run\n  ./run --tokenize\n  ./run --parse\n  ./run <source-file>\n  ./run --tokenize <source-file>\n  ./run --parse <source-file>\n  ./run --eval <source-file>\n  ./run --eval\n  ./run --help";
+
+// The parser and evaluator recurse once per level of nesting, and the default main-thread
+// stack is only 1 MB on Windows. parser::MAX_NESTING is sized to fit inside this.
+const STACK_BYTES: usize = 256 * 1024 * 1024;
 
 #[derive(Clone, Copy)]
 enum Stage {
@@ -28,6 +33,18 @@ enum Stage {
 }
 
 fn main() -> ExitCode {
+    let interpreter = match thread::Builder::new().stack_size(STACK_BYTES).spawn(run_cli) {
+        Ok(interpreter) => interpreter,
+        Err(error) => {
+            eprintln!("Error: Failed to start the interpreter: {error}");
+            return ExitCode::from(70);
+        }
+    };
+    // Joining only fails after a panic, which has already printed its own message.
+    interpreter.join().unwrap_or(ExitCode::from(70))
+}
+
+fn run_cli() -> ExitCode {
     let mut args = env::args_os().skip(1);
     let Some(first) = args.next() else {
         repl(Stage::Eval);
