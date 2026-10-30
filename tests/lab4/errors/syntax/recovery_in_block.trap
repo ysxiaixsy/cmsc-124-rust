@@ -1,0 +1,5 @@
+{
+    hold = 1; // expect error: [line 2] Error at '=': Expect variable name.
+    spittin "kept";
+    spittin 2 } // expect error: [line 4] Error at '}': Expect ';' after spittin value.
+1 +; // expect error: [line 5] Error at ';': Expect expression.
