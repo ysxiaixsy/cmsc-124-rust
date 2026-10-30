@@ -322,7 +322,7 @@ The parser reports syntax errors with the token line and continues recovery at a
 
 
 ```
-tests/lab1/boolean_keywords_and_identifier_prefixes.trap       nocap and cap scan as booleans; capital and nocapper stay identifiers
+tests/lab1/keywords/boolean_keywords_and_identifier_prefixes.trap nocap and cap scan as booleans; capital and nocapper stay identifiers
 tests/lab1/keywords/all_keywords_and_token_categories.trap     every keyword together in one program
 tests/lab1/keywords/blank_lines_preserve_line_numbers.trap     blank lines between code keep line numbers right
 tests/lab1/keywords/condition_with_comparisons_and_string.trap ong with >= and < and a string
@@ -341,7 +341,8 @@ tests/lab1/errors/unexpected_at_character.trap                  unexpected @ aft
 tests/lab1/errors/unexpected_hash_character.trap                unexpected #; exits 65
 tests/lab1/errors/unterminated_multiline_string.trap            unterminated string across lines; exits 65
 tests/lab1/errors/multiple_unexpected_characters.trap          scanner reports more than one error; exits 65
-tests/lab1/empty_file.trap                                      empty source emits only EOF
+tests/lab1/whitespace/empty_file.trap                           empty source emits only EOF
+tests/lab1/literals/source_text_and_values.trap                 lexemes and literal values for numbers, strings, and booleans
 tests/lab1/strings/empty_string.trap                            empty string literal
 tests/lab1/strings/multiline_string.trap                        valid string spanning two lines
 tests/lab1/strings/backslash_does_not_escape_quote.trap         backslash is ordinary; the quote ends the string
