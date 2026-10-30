@@ -238,7 +238,7 @@ Operators that need numbers share one check, so they report the same diagnostic.
 
 ### Truthiness
 
-Only `cap` and `nil` are falsey; all other values, including zero and the empty string, are truthy. The rule lives in one function, so `!` and every later conditional answer the same way. `!` takes any value and never reports a type error. `tests/lab3/truthiness.trap` is the executable statement of this rule.
+Only `cap` and `nil` are falsey; all other values, including zero and the empty string, are truthy. The rule lives in one function, so `!` and every later conditional answer the same way. `!` takes any value and never reports a type error. `tests/lab3/values/truthiness.trap` is the executable statement of this rule.
 
 ### Operator semantics
 
@@ -383,6 +383,23 @@ tests/lab2/errors/missing_statement_semicolon.trap adjacent statements without a
 tests/lab2/errors/empty_statements.trap        bare and repeated semicolons are rejected; exits 65
 tests/lab2/errors/recovery_statements.trap      malformed statements recover at semicolons; exits 65
 tests/lab2/errors/multiline_string_same_line_followup.trap  a multiline string expression followed by a token without a semicolon; exits 65
+
+tests/lab3/values/literals.trap                     every literal evaluates to its value, including the empty string
+tests/lab3/values/truthiness.trap                   only cap and nil are falsey under !; zero and "" are truthy
+tests/lab3/operators/arithmetic.trap                + - * / with precedence, left associativity, unary minus, and string +
+tests/lab3/operators/comparison.trap                the four comparisons, including the < against <= boundary
+tests/lab3/operators/equality.trap                  == and != across matching and mismatched types
+tests/lab3/operators/precedence_chain.trap          term over comparison over equality in one expression
+tests/lab3/statements/multiline_statements.trap     statements span and share lines; semicolons in strings and comments stay literal
+tests/lab3/statements/comment_only.trap             a file of only comments prints nothing
+tests/lab3/errors/runtime/division_by_zero.trap     dividing by negative zero stops evaluation but keeps earlier output; exits 70
+tests/lab3/errors/runtime/mixed_addition.trap       + on a string and a number; exits 70
+tests/lab3/errors/runtime/wrong_arithmetic_type.trap - on a string; exits 70
+tests/lab3/errors/runtime/wrong_comparison_type.trap < on a string; exits 70
+tests/lab3/errors/runtime/wrong_negation_type.trap  unary minus on nil; exits 70
+tests/lab3/errors/syntax/missing_final_semicolon.trap a final expression with no semicolon rejects the whole file; exits 65
+tests/lab3/errors/syntax/recovery_statements.trap   three malformed statements all report after recovery; exits 65
+tests/lab3/errors/syntax/static_error.trap          an unclosed group rejects the file before anything evaluates; exits 65
 
 tests/lab4/output/hello.trap                                  spittin prints every value type
 tests/lab4/output/script_mode.trap                            bare expression values are discarded between spittin statements
