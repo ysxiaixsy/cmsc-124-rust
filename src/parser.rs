@@ -1,9 +1,10 @@
 use crate::ast::{Expr, Literal, Program, Stmt};
 use crate::tokens::{LiteralValue, Token, Tokentypes};
 
-// the deepest an expression's tree can get. the parser, the evaluator, the printer, and
-// dropping the tree all recurse once per level, so this has to fit inside main::STACK_BYTES.
-// past it the parser reports a syntax error, because overflowing the stack aborts the process
+// the deepest a statement's tree can get, counting each enclosing block and each expression
+// level. the parser, the evaluator, the printer, and dropping the tree all recurse once per
+// level, so this has to fit inside main::STACK_BYTES. past it the parser reports a syntax
+// error, because overflowing the stack aborts the process
 const MAX_NESTING: usize = 10_000;
 
 // a syntax error, already formatted with its line: [line 1] Error at ')': Expect expression.
@@ -19,6 +20,8 @@ pub struct Parser {
     // how deep the tree of the current statement reaches so far: the levels above the rule
     // that is running, plus the height of what that rule has already built
     depth: usize,
+    // how many blocks enclose the statement being parsed. its expressions start this deep
+    block_depth: usize,
 }
 
 impl Parser {
@@ -27,6 +30,7 @@ impl Parser {
             tokens,
             current: 0,
             depth: 0,
+            block_depth: 0,
         }
     }
 
@@ -38,6 +42,8 @@ impl Parser {
 
         while !self.is_at_end() {
             let statement_start = self.current;
+            // an error inside a block unwinds straight to here, past every block it was in
+            self.block_depth = 0;
             self.depth = 0;
             match self.declaration() {
                 Ok(statement) => statements.push(statement),
@@ -78,14 +84,39 @@ impl Parser {
         Ok(Stmt::Hold { name, initializer })
     }
 
-    // statement -> printStatement | expressionStatement
-    // the leading keyword is the only thing that distinguishes them, so one token of
+    // statement -> block | printStatement | expressionStatement
+    // the leading token is the only thing that distinguishes them, so one token of
     // lookahead picks the branch and no backtracking is needed
     fn statement(&mut self) -> Result<Stmt, ParseError> {
+        if self.match_types(&[Tokentypes::LeftBrace]) {
+            return self.block();
+        }
         if self.match_types(&[Tokentypes::Spittin]) {
             return self.print_statement();
         }
         self.expression_statement()
+    }
+
+    // block -> "{" declaration* "}"
+    // a block is a statement, so it nests anywhere a statement can, and its closing brace
+    // ends it: no semicolon follows
+    fn block(&mut self) -> Result<Stmt, ParseError> {
+        let brace = self.previous().clone();
+        if self.block_depth >= MAX_NESTING {
+            let message = format!("Blocks nested too deeply (limit is {MAX_NESTING} levels).");
+            return Err(self.error(&brace, &message));
+        }
+        self.block_depth += 1;
+
+        let mut statements = Vec::new();
+        while !self.check(&Tokentypes::RightBrace) && !self.is_at_end() {
+            self.depth = self.block_depth;
+            statements.push(self.declaration()?);
+        }
+
+        self.block_depth -= 1;
+        self.consume(Tokentypes::RightBrace, "Expect '}' after block.")?;
+        Ok(Stmt::Block(statements))
     }
 
     // printStatement -> "spittin" expression ";"

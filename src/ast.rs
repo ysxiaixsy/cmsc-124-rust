@@ -11,6 +11,8 @@ pub enum Stmt {
     Print(Expr),
     // hold: creates a binding. the name keeps its whole token so errors can report its line
     Hold { name: Token, initializer: Option<Expr> },
+    // { ... }: its statements run in a new innermost scope that ends at the closing brace
+    Block(Vec<Stmt>),
 }
 
 // the source value a literal node holds

@@ -47,25 +47,55 @@ pub fn evaluate(
     output: Output,
     mut emit: impl FnMut(Value),
 ) -> Result<(), RuntimeError> {
-    for statement in &program.statements {
-        match statement {
-            // evaluated either way: the value is what gets dropped, never the work
-            Stmt::Expression(expr) => {
-                let value = evaluate_expression(expr, environment)?;
-                if let Output::EveryValue = output {
-                    emit(value);
-                }
+    execute_all(&program.statements, environment, output, &mut emit)
+}
+
+// statements run in source order and the first runtime error stops the rest
+fn execute_all(
+    statements: &[Stmt],
+    environment: &mut Environment,
+    output: Output,
+    emit: &mut dyn FnMut(Value),
+) -> Result<(), RuntimeError> {
+    for statement in statements {
+        execute(statement, environment, output, emit)?;
+    }
+    Ok(())
+}
+
+fn execute(
+    statement: &Stmt,
+    environment: &mut Environment,
+    output: Output,
+    emit: &mut dyn FnMut(Value),
+) -> Result<(), RuntimeError> {
+    match statement {
+        // evaluated either way: the value is what gets dropped, never the work
+        Stmt::Expression(expr) => {
+            let value = evaluate_expression(expr, environment)?;
+            if let Output::EveryValue = output {
+                emit(value);
             }
-            Stmt::Print(expr) => emit(evaluate_expression(expr, environment)?),
-            Stmt::Hold { name, initializer } => {
-                // the name is bound only after the initializer finishes, so `hold x = x + 1;`
-                // reads the previous x and `hold y = y;` fails unless y already exists
-                let value = match initializer {
-                    Some(expr) => evaluate_expression(expr, environment)?,
-                    None => Value::Nil,
-                };
-                environment.define(&name.lexeme, value);
-            }
+        }
+        Stmt::Print(expr) => emit(evaluate_expression(expr, environment)?),
+        Stmt::Hold { name, initializer } => {
+            // the name is bound only after the initializer finishes, so `hold x = x + 1;`
+            // reads the previous x, even when that x lives in an enclosing scope and this hold
+            // is about to shadow it. `hold y = y;` fails unless some scope already has a y
+            let value = match initializer {
+                Some(expr) => evaluate_expression(expr, environment)?,
+                None => Value::Nil,
+            };
+            environment.define(&name.lexeme, value);
+        }
+        Stmt::Block(statements) => {
+            // nothing between push and pop can return early, so the enclosing scope comes back
+            // even when the block fails. the REPL keeps its environment after a runtime error,
+            // and a scope left pushed would hide the session's own bindings behind the block's
+            environment.push();
+            let result = execute_all(statements, environment, output, emit);
+            environment.pop();
+            result?;
         }
     }
     Ok(())

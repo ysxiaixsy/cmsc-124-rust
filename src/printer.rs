@@ -1,20 +1,34 @@
 use crate::ast::{Expr, Literal, Program, Stmt};
 
-// traverse the program root, emitting one formatted expression statement at a time
+// traverse the program root, emitting one formatted top-level statement at a time
 pub fn print(program: &Program, mut emit: impl FnMut(String)) {
     for statement in &program.statements {
-        match statement {
-            Stmt::Expression(expr) => emit(print_expression(expr)),
-            // the keyword leads, the same way an operator does, so the statement form is visible
-            Stmt::Print(expr) => emit(format!("(spittin {})", print_expression(expr))),
-            Stmt::Hold {
-                name,
-                initializer: Some(expr),
-            } => emit(format!("(hold {} {})", name.lexeme, print_expression(expr))),
-            Stmt::Hold {
-                name,
-                initializer: None,
-            } => emit(format!("(hold {})", name.lexeme)),
+        emit(print_statement(statement));
+    }
+}
+
+fn print_statement(statement: &Stmt) -> String {
+    match statement {
+        Stmt::Expression(expr) => print_expression(expr),
+        // the keyword leads, the same way an operator does, so the statement form is visible
+        Stmt::Print(expr) => format!("(spittin {})", print_expression(expr)),
+        Stmt::Hold {
+            name,
+            initializer: Some(expr),
+        } => format!("(hold {} {})", name.lexeme, print_expression(expr)),
+        Stmt::Hold {
+            name,
+            initializer: None,
+        } => format!("(hold {})", name.lexeme),
+        // a whole block stays on its own line, its statements in order: (block (hold x 1.0))
+        Stmt::Block(statements) => {
+            let mut text = String::from("(block");
+            for statement in statements {
+                text.push(' ');
+                text.push_str(&print_statement(statement));
+            }
+            text.push(')');
+            text
         }
     }
 }
