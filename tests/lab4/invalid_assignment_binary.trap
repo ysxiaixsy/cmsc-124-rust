@@ -1,0 +1,5 @@
+// static: the first statement must not run, so stdout stays empty
+spittin "not reached";
+hold a = 1;
+hold b = 2;
+a + b = 3; // expect error: Invalid assignment target.

@@ -1,0 +1,10 @@
+hold total = 1;
+hold Total = 2;
+hold total2 = 3;
+hold _total = 4;
+hold holder = 5;
+spittin total; // expect: 1
+spittin Total; // expect: 2
+spittin total2; // expect: 3
+spittin _total; // expect: 4
+spittin holder; // expect: 5

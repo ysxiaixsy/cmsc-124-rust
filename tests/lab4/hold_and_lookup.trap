@@ -1,0 +1,13 @@
+hold number = 3;
+hold text = "trap";
+hold flag = nocap;
+hold nothing = nil;
+spittin number; // expect: 3
+spittin text; // expect: trap
+spittin flag; // expect: nocap
+spittin nothing; // expect: nil
+hold width = 4;
+hold area = number * width + 1;
+spittin area; // expect: 13
+spittin text + "script"; // expect: trapscript
+spittin !flag; // expect: cap
