@@ -382,6 +382,33 @@ tests/lab2/errors/missing_statement_semicolon.trap adjacent statements without a
 tests/lab2/errors/empty_statements.trap        bare and repeated semicolons are rejected; exits 65
 tests/lab2/errors/recovery_statements.trap      malformed statements recover at semicolons; exits 65
 tests/lab2/errors/multiline_string_same_line_followup.trap  a multiline string expression followed by a token without a semicolon; exits 65
+
+tests/lab4/output/hello.trap                                  spittin prints every value type
+tests/lab4/output/script_mode.trap                            bare expression values are discarded between spittin statements
+tests/lab4/output/silent_expressions.trap                     a file of bare expressions prints nothing
+tests/lab4/bindings/hold_and_lookup.trap                      hold binds every value type; names read back alone and inside expressions
+tests/lab4/bindings/hold_without_initializer.trap             hold with no initializer holds nil until assigned
+tests/lab4/bindings/redeclaration.trap                        a later hold replaces the binding, and its initializer reads the old value
+tests/lab4/bindings/names_are_exact.trap                      case, digits, underscores, and keyword prefixes make distinct names
+tests/lab4/assignment/updates_binding.trap                    = changes a binding's value and its type
+tests/lab4/assignment/as_expression.trap                      assignment produces its value, chains from the right, and nests in expressions
+tests/lab4/assignment/copies_value.trap                       assigning to one name leaves a name bound from it unchanged
+tests/lab4/errors/runtime/print_runtime_error.trap            a runtime error in spittin keeps earlier output; exits 70
+tests/lab4/errors/runtime/undefined_read.trap                 reading an undeclared name; exits 70
+tests/lab4/errors/runtime/undefined_assignment.trap           assigning an undeclared name; exits 70
+tests/lab4/errors/runtime/undefined_in_own_initializer.trap   a first hold cannot read itself; exits 70
+tests/lab4/errors/runtime/undefined_keeps_earlier_output.trap an undefined read stops the program but keeps earlier output; exits 70
+tests/lab4/errors/runtime/undefined_misspelled_assignment.trap a misspelled assignment is an error, not a new variable; exits 70
+tests/lab4/errors/syntax/missing_semicolon.trap               spittin with no semicolon; exits 65
+tests/lab4/errors/syntax/hold_missing_semicolon.trap          hold with no semicolon; exits 65
+tests/lab4/errors/syntax/hold_missing_name.trap               hold with no name; exits 65
+tests/lab4/errors/syntax/hold_keyword_as_name.trap            a keyword cannot be declared; exits 65
+tests/lab4/errors/syntax/hold_missing_initializer.trap        = with no initializer; exits 65
+tests/lab4/errors/syntax/hold_inside_expression.trap          hold cannot appear inside an expression; exits 65
+tests/lab4/errors/syntax/invalid_assignment_literal.trap      a literal cannot be assigned; exits 65
+tests/lab4/errors/syntax/invalid_assignment_grouped.trap      a grouped name cannot be assigned; exits 65
+tests/lab4/errors/syntax/invalid_assignment_binary.trap       a binary expression cannot be assigned, and nothing runs first; exits 65
+tests/lab4/errors/syntax/invalid_assignment_unary.trap        a unary expression cannot be assigned; exits 65
 ```
 
 Run locally with:
