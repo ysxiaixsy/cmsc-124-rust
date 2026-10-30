@@ -1,0 +1,3 @@
+(hold x 1.0)
+(block (hold x (+ x 1.0)) (block (= x 10.0) (spittin x)))
+(block)

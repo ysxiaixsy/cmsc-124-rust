@@ -1,0 +1,5 @@
+{
+    hold inner = 1;
+    spittin inner; // expect: 1
+}
+spittin inner; // expect runtime error: Undefined variable 'inner'.

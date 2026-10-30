@@ -1,0 +1,8 @@
+hold x = "outer";
+{
+    hold x = "inner";
+    spittin x; // expect: inner
+    x = "changed";
+    spittin x; // expect: changed
+}
+spittin x; // expect: outer

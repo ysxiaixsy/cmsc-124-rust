@@ -1,0 +1,4 @@
+{}
+{ {} }
+{ { { spittin "deep"; } } } // expect: deep
+spittin "after"; // expect: after

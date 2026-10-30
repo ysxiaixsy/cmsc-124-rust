@@ -1,0 +1,3 @@
+hold x = 1;
+{ hold x = x + 1; { x = 10; spittin x; } }
+{}

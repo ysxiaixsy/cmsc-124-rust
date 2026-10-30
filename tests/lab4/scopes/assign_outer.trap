@@ -1,0 +1,6 @@
+hold count = 1;
+{
+    count = count + 1;
+    { count = count * 10; }
+}
+spittin count; // expect: 20
