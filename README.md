@@ -26,7 +26,7 @@ TrapScript is a dynamically typed scripting language styled on internet slang.
 | `./run --parse <file>` | Parses the file and prints each expression statement in prefix form, one line per statement, or every scan or syntax error to stderr. |
 | `./run --help` | Prints the supported command forms. |
 | `./run --eval <file>` | Evaluates the file and prints the value of **every** expression statement, the Lab 3 contract. Kept separate from plain `./run` so the Lab 3 tests stay meaningful now that a program speaks only through `spittin`. |
-| `./run` | Starts the evaluator REPL. Each input line is a complete program and must include a semicolon after every statement. Values print in statement order; errors report a diagnostic and return the prompt. End with Ctrl+Z then Enter on Windows, or Ctrl+D on Linux/macOS. |
+| `./run` | Starts the evaluator REPL. Each input line is a complete program and must include a semicolon after every statement. Values print in statement order; errors report a diagnostic and return the prompt. Bindings persist across lines for the whole session, including after an error. End with Ctrl+Z then Enter on Windows, or Ctrl+D on Linux/macOS. |
 | `./run --tokenize` | Starts the scanner REPL. |
 | `./run --eval` | Starts the evaluator REPL explicitly. |
 | `./run --parse` | Starts the REPL at the parser instead. Each input line is a complete program; every statement needs a semicolon. It prints one expression tree per statement. |
@@ -83,7 +83,7 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 | Symbol | Purpose |
 |---|---|
 | `,` | separates function parameters and call arguments |
-| `;` | terminates an expression statement |
+| `;` | terminates a statement or declaration |
 
 ### Literals
 
@@ -112,7 +112,7 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 ## Whitespace and termination
 
 - Whitespace: spaces, tabs, and newlines outside strings separate tokens and are otherwise ignored. Newlines do not end statements.
-- Statement terminator: `;` (Semicolon). Every expression statement needs one, including the final statement immediately before EOF.
+- Statement terminator: `;` (Semicolon). Every statement and declaration needs one, including the final one immediately before EOF.
 - A semicolon inside a string or a `//` comment is part of that literal or comment, not a terminator.
 - Expressions and parenthesized groups can span lines. Multiple statements can share a line. Blank and comment-only lines are allowed.
 - Empty statements are not supported: a bare or repeated semicolon is a syntax error. An empty program is accepted.
@@ -157,32 +157,38 @@ Frozen as of Lab 1; changes are recorded in the changelog.
 ## Grammar
 
 ```
-program             → statement* EOF
+program             → declaration* EOF
+declaration         → holdDeclaration | statement
+holdDeclaration     → "hold" IDENTIFIER ( "=" expression )? ";"
 statement           → printStatement | expressionStatement
 printStatement      → "spittin" expression ";"
 expressionStatement → expression ";"
-expression → equality
+expression → assignment
+assignment → IDENTIFIER "=" assignment | equality
 equality   → comparison ( ( "!=" | "==" ) comparison )*
 comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term       → factor ( ( "-" | "+" ) factor )*
 factor     → unary ( ( "/" | "*" ) unary )*
 unary      → ( "!" | "-" ) unary | primary
-primary    → NUM | DEC | STRING | "nocap" | "cap" | "nil" | "(" expression ")"
+primary    → NUM | DEC | STRING | "nocap" | "cap" | "nil" | IDENTIFIER | "(" expression ")"
 ```
 
 - Quoted terminals are tokens. `NUM`, `DEC`, and `STRING` are the scanner's integer, decimal, and string tokens. `true` and `false` produce the same tokens as `nocap` and `cap` for now (see known limitations).
-- The rules go from loosest-binding (`equality`) to tightest (`primary`), and each rule only calls the one below it. That is what makes `!` bind tighter than `==`: `!nocap == cap` parses as `(== (! nocap) cap)`.
+- The rules go from loosest-binding (`assignment`) to tightest (`primary`), and each rule only calls the one below it. That is what makes `!` bind tighter than `==`: `!nocap == cap` parses as `(== (! nocap) cap)`.
 - The `( ... )*` loops make every binary operator left-associative: `1 != 2 != 3` parses as `(!= (!= 1.0 2.0) 3.0)`.
 - `unary` calls itself, so unary operators chain and group from the right: `!!nocap` parses as `(! (! nocap))`.
-- Every rule above is implemented. `primary` has no identifier branch yet, so names are not expressions until variables arrive in Lab 4.
-- **Program structure:** the parser returns one `Program` root containing an ordered list of expression-statement children. Each child contains the existing expression tree. The parser consumes the complete file through EOF; it does not return independent expression roots. Newlines are whitespace, so `1 +` followed by `2;` continues one expression, and a leading `-` on a later line can continue the preceding expression when no semicolon intervenes. A multiline string remains one literal node.
+- Every rule above is implemented. An identifier in an expression reads that binding.
+- **Where bindings are legal:** `hold` is a declaration, so it can begin a statement but cannot appear inside an expression: `spittin hold x = 1;` is a syntax error. The initializer is optional, and the name must be an identifier, so a keyword cannot be declared.
+- **Assignment** is an expression, legal anywhere an expression is, and it produces the assigned value: `spittin x = 2;` prints `2`, and `hold y = (x = 3);` binds both. `assignment` calls itself on the right, so `a = b = 1` groups as `a = (b = 1)`.
+- **Assignment targets:** the parser reads the left side as an ordinary expression, then checks that it is a bare name when it finds `=`. `1 = 2;`, `(a) = 2;`, `-a = 2;`, and `a + b = 3;` are all rejected before anything runs, with exit `65`.
+- **Program structure:** the parser returns one `Program` root containing an ordered list of statement children. Each child contains the existing expression tree. The parser consumes the complete file through EOF; it does not return independent expression roots. Newlines are whitespace, so `1 +` followed by `2;` continues one expression, and a leading `-` on a later line can continue the preceding expression when no semicolon intervenes. A multiline string remains one literal node.
 - `nil` is a literal, introduced in Lab 3. Its token has type `Nil` and no payload; its AST node is `Literal::Nil`.
 - **Statements:** `spittin` was reserved as the output keyword from Lab 1 and is wired up in Lab 4. One token of lookahead picks the branch, so `statement` needs no backtracking. A print statement is a statement, not an expression: `spittin` cannot appear inside an expression, and `spittin spittin 1;` is a syntax error.
 - **Script mode:** running a file executes its statements in order, and only `spittin` writes to stdout. A bare expression statement is still evaluated, so its runtime errors still fire, but its value is discarded. `--eval` keeps the Lab 3 behaviour of printing every expression statement's value, which is why both entry points exist.
 
 ## Parse output format
 
-The program root is not printed as a wrapper. The printer visits its statement children and preserves the existing prefix expression format, with one output line per expression statement. Output line breaks do not represent separate AST roots.
+The program root is not printed as a wrapper. The printer visits its statement children and preserves the existing prefix expression format, with one output line per statement. Output line breaks do not represent separate AST roots.
 
 ```
 (!= (group (== 1.0 2.0)) (! cap))
@@ -190,7 +196,9 @@ The program root is not printed as a wrapper. The printer visits its statement c
 
 That is the output for `(1 == 2) != !cap`.
 
-- One line per expression statement, in prefix form: the operator comes first, then its operands.
+- One line per statement, in prefix form: the operator comes first, then its operands.
+- Statements with a keyword lead with it: `(spittin 1.0)`, `(hold x 1.0)`, and `(hold x)` when there is no initializer.
+- Names print bare, and assignment prints as an operator: `(= x (+ x 1.0))`.
 - Groupings print as: `(group ...)`
 - Numbers print as: always with a decimal point, so `5` prints as `5.0` and `3.14` as `3.14`
 - Strings print in double quotes with control characters and backslashes escaped: a string containing a newline prints as `"first\nsecond"` on one output line, and a literal backslash prints as `\\`
@@ -243,10 +251,18 @@ Only `cap` and `nil` are falsey; all other values, including zero and the empty 
 
 ### Scope and bindings
 
-- Redeclaration in the same scope: [allowed or an error]
-- Uninitialized variable holds: [value]
-- Shadowing: [behavior]
-- Undefined name: [static error with exit 65, or runtime error with exit 70]
+- Paradigm: imperative. `hold` creates a binding, `=` changes it in place, and `spittin` makes results observable.
+- Mutability: every binding is mutable. Typing is dynamic, so assignment can change both a binding's value and its type. `locked` stays reserved for constants and has no grammar yet.
+- Declaring against assigning: `hold` binds in the current environment without searching and cannot fail. `=` only updates an existing binding and never creates one, so a misspelled name is an error rather than a new variable.
+- Redeclaration in the same scope: allowed. A later `hold` replaces the earlier binding, which keeps retyping a line at the REPL painless. The initializer runs first, so `hold x = x + 1;` reads the old `x`, and `hold x;` resets it to `nil`.
+- Uninitialized variable holds: `nil`.
+- Visibility: a binding becomes visible once its `hold` finishes, so a first declaration cannot read itself in its own initializer.
+- Scope: one global environment for now, so every lookup finds the only binding of that name or fails. Nested scopes arrive in Week 3.
+- Shadowing: not possible until nested scopes exist.
+- Binding time: a name binds to storage and to its first value when `hold` executes, and to a new value at each assignment. Its type is never declared; it follows whichever value it currently holds.
+- Storage lifetime: from the moment `hold` executes until the program ends, or until the session ends in the REPL. Nothing can release a global binding sooner, so this is static storage in the sense of lasting for the program. The Rust `HashMap` behind it is an implementation detail, not a promise of heap-dynamic storage.
+- Values are copied on binding: after `hold b = a;`, assigning to `a` leaves `b` unchanged.
+- Undefined name: runtime error with exit 70 and `Undefined variable 'a'.`, for both reading and assigning. The check happens when the name is evaluated, so code that never runs never reports, and Lab 5's mutually recursive functions need no separate resolution pass. The right side of an assignment runs first, so `z = 1 / 0;` reports the division by zero even if `z` is undefined.
 
 ### Control flow and functions
 
@@ -288,8 +304,8 @@ The parser reports syntax errors with the token line and continues recovery at a
 | Failure | Exit code |
 |---|---|
 | lexical error: unexpected character or unterminated string | 65 |
-| syntax error: a missing `)`, a missing operand, or a token that can't start an expression | 65 |
-| runtime type error, division by zero, or an operator deferred to Week 2 | 70 |
+| syntax error: a missing `)`, a missing operand, a token that can't start an expression, a malformed `hold`, or an invalid assignment target | 65 |
+| runtime type error, division by zero, or an undefined variable | 70 |
 
 
 ## Testing conventions
@@ -377,6 +393,7 @@ python3 run_tests.py tests/lab0
 python3 run_tests.py tests/lab1
 python3 run_tests.py tests/lab2
 python3 run_tests.py tests/lab3
+python3 run_tests.py tests/lab4
 ```
 
 On Windows, run these from Git Bash and use `python` instead of `python3`.
@@ -409,7 +426,8 @@ guess `var`, but this tradeoff is worth it because personality creates identity.
 
 - `true` and `false` still scan as booleans alongside `nocap` and `cap`.
 - The REPL handles each submitted line as a complete program (evaluating by default, scanning with `--tokenize`, parsing with `--parse`), so line numbers restart at 1 on every line. Parse and evaluation input requires a semicolon after every expression statement. An unfinished expression or missing semicolon reports an error and returns to the prompt; the REPL does not buffer multiple lines into one program. A string cannot continue onto the next REPL input line: a multiline string that works in a file is an unterminated-string error in the REPL.
-- `--parse` has no identifiers: a name like `x` is "Expect expression" until variables arrive in Lab 4.
+- `locked` is reserved but has no grammar yet, so `locked x = 1;` is "Expect expression".
+- Parser recovery only stops at semicolons, so a missing semicolon hides any error in the statement right after it.
 
 ## Changelog
 
@@ -443,4 +461,18 @@ exits 70, and a missing semicolon that exits 65.
 `tests/lab0/hello.src` is now a TrapScript program that prints its own expectation.
 CI runs Labs 0 through 4.
 
-Bindings, scope, and assignment arrive in Week 2.
+Bindings and assignment arrive in Week 2, and nested scopes in Week 3.
+
+### Lab 4 Week 2 progress
+
+Programs can now remember things. `hold` creates a binding, an identifier reads one, and
+`=` updates one. Assignment is a right-associative expression that produces its value, and
+its target is checked in the parser. All of it lives in one global `Environment`, created
+once per file run or REPL session, so REPL variables survive across lines and errors.
+
+`tests/lab4/` gains binding creation and lookup, `hold` with no initializer, assignment
+and its value inside expressions, redeclaration, value copying, and exact name matching,
+then one error per file: undefined reads and assignments at exit 70, and malformed `hold`
+declarations and invalid assignment targets at exit 65.
+
+Nested scopes, shadowing, and recovery beyond semicolons are Week 3.
