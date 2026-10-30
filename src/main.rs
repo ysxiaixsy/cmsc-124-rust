@@ -1,4 +1,5 @@
 mod ast;
+mod environment;
 mod evaluator;
 mod parser;
 mod printer;
@@ -6,6 +7,7 @@ mod tokenizer;
 mod tokens;
 mod value;
 
+use environment::Environment;
 use parser::Parser;
 use std::{
     env, fs,
@@ -54,7 +56,7 @@ fn main() -> ExitCode {
 
     if let Some(path) = path {
         match fs::read_to_string(&path) {
-            Ok(source) => ExitCode::from(run_source(stage, source)),
+            Ok(source) => ExitCode::from(run_source(stage, source, &mut Environment::new())),
             Err(error) => {
                 eprintln!(
                     "Error: Failed to read '{}': {error}",
@@ -75,7 +77,7 @@ fn usage_error(message: &str) -> ExitCode {
 }
 
 // Files and REPL lines share the same scan, parse, and evaluation path.
-fn run_source(stage: Stage, source: String) -> u8 {
+fn run_source(stage: Stage, source: String, environment: &mut Environment) -> u8 {
     let scanned = tokenizer(source);
     if !scanned.errors.is_empty() {
         // Token mode also reports the tokens preceding the first scan error.
@@ -116,7 +118,9 @@ fn run_source(stage: Stage, source: String) -> u8 {
                 Stage::Eval => evaluator::Output::EveryValue,
                 _ => evaluator::Output::PrintOnly,
             };
-            if let Err(error) = evaluator::evaluate(&program, output, |value| println!("{value}")) {
+            if let Err(error) =
+                evaluator::evaluate(&program, environment, output, |value| println!("{value}"))
+            {
                 eprintln!("{error}");
                 return 70;
             }
@@ -127,6 +131,8 @@ fn run_source(stage: Stage, source: String) -> u8 {
 }
 
 fn repl(stage: Stage) {
+    // One environment for the whole session: a runtime error ends a line, not its variables.
+    let mut environment = Environment::new();
     loop {
         print!("> ");
         if let Err(error) = io::stdout().flush() {
@@ -139,7 +145,11 @@ fn repl(stage: Stage) {
             Ok(0) => break,
             Ok(_) => {
                 // Trim only the line ending; spaces may belong to a string.
-                run_source(stage, line.trim_end_matches(['\r', '\n']).to_string());
+                run_source(
+                    stage,
+                    line.trim_end_matches(['\r', '\n']).to_string(),
+                    &mut environment,
+                );
             }
             Err(error) => {
                 eprintln!("Error: Failed to read input: {error}");

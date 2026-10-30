@@ -7,6 +7,14 @@ pub fn print(program: &Program, mut emit: impl FnMut(String)) {
             Stmt::Expression(expr) => emit(print_expression(expr)),
             // the keyword leads, the same way an operator does, so the statement form is visible
             Stmt::Print(expr) => emit(format!("(spittin {})", print_expression(expr))),
+            Stmt::Hold {
+                name,
+                initializer: Some(expr),
+            } => emit(format!("(hold {} {})", name.lexeme, print_expression(expr))),
+            Stmt::Hold {
+                name,
+                initializer: None,
+            } => emit(format!("(hold {})", name.lexeme)),
         }
     }
 }
@@ -37,6 +45,10 @@ fn print_expression(expr: &Expr) -> String {
                 print_expression(left),
                 print_expression(right)
             )
+        }
+        Expr::Variable(name) => name.lexeme.clone(),
+        Expr::Assign { name, value } => {
+            format!("(= {} {})", name.lexeme, print_expression(value))
         }
     }
 }

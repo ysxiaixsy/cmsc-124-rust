@@ -18,7 +18,7 @@ impl Parser {
         Parser { tokens, current: 0 }
     }
 
-    // program -> expressionStatement* EOF
+    // program -> declaration* EOF
     // collect every syntax error; return a root only on success
     pub fn parse(&mut self) -> Result<Program, Vec<ParseError>> {
         let mut statements = Vec::new();
@@ -26,7 +26,7 @@ impl Parser {
 
         while !self.is_at_end() {
             let statement_start = self.current;
-            match self.statement() {
+            match self.declaration() {
                 Ok(statement) => statements.push(statement),
                 Err(error) => {
                     errors.push(error);
@@ -40,6 +40,29 @@ impl Parser {
         } else {
             Err(errors)
         }
+    }
+
+    // declaration -> holdDeclaration | statement
+    fn declaration(&mut self) -> Result<Stmt, ParseError> {
+        if self.match_types(&[Tokentypes::Hold]) {
+            return self.hold_declaration();
+        }
+        self.statement()
+    }
+
+    // holdDeclaration -> "hold" IDENTIFIER ( "=" expression )? ";"
+    fn hold_declaration(&mut self) -> Result<Stmt, ParseError> {
+        self.consume(Tokentypes::Identifier, "Expect variable name.")?;
+        let name = self.previous().clone();
+
+        let initializer = if self.match_types(&[Tokentypes::Equal]) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+
+        self.consume(Tokentypes::Semicolon, "Expect ';' after variable declaration.")?;
+        Ok(Stmt::Hold { name, initializer })
     }
 
     // statement -> printStatement | expressionStatement
@@ -68,9 +91,31 @@ impl Parser {
 
     // ----- grammar rules, loosest-binding first -----
 
-    // expression → equality
+    // expression → assignment
     fn expression(&mut self) -> Result<Expr, ParseError> {
-        self.equality()
+        self.assignment()
+    }
+
+    // assignment → IDENTIFIER "=" assignment | equality
+    // the left side parses as an ordinary expression first: one token of lookahead can't tell
+    // `a = 1` from `a + 1`. finding "=" afterwards is what checks that it was a bare name
+    fn assignment(&mut self) -> Result<Expr, ParseError> {
+        let expr = self.equality()?;
+
+        if self.match_types(&[Tokentypes::Equal]) {
+            let equals = self.previous().clone();
+            // calling itself is what makes a = b = 1 group from the right
+            let value = self.assignment()?;
+            return match expr {
+                Expr::Variable(name) => Ok(Expr::Assign {
+                    name,
+                    value: Box::new(value),
+                }),
+                _ => Err(self.error(&equals, "Invalid assignment target.")),
+            };
+        }
+
+        Ok(expr)
     }
 
     // equality → comparison ( ( "!=" | "==" ) comparison )*
@@ -161,7 +206,7 @@ impl Parser {
         self.primary()
     }
 
-    // primary → NUM | DEC | STRING | "nocap" | "cap" | "nil" | "(" expression ")"
+    // primary → NUM | DEC | STRING | "nocap" | "cap" | "nil" | IDENTIFIER | "(" expression ")"
     fn primary(&mut self) -> Result<Expr, ParseError> {
         let token = self.peek().clone();
 
@@ -175,6 +220,10 @@ impl Parser {
             }
             (Tokentypes::Num | Tokentypes::Dec, Some(LiteralValue::Number(value))) => {
                 Literal::Number(*value)
+            }
+            (Tokentypes::Identifier, _) => {
+                self.advance();
+                return Ok(Expr::Variable(token));
             }
             (Tokentypes::LeftParen, _) => {
                 self.advance();

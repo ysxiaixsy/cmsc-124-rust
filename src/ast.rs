@@ -9,6 +9,8 @@ pub enum Stmt {
     Expression(Expr),
     // spittin: the statement that makes a program's results observable
     Print(Expr),
+    // hold: creates a binding. the name keeps its whole token so errors can report its line
+    Hold { name: Token, initializer: Option<Expr> },
 }
 
 // the source value a literal node holds
@@ -28,4 +30,6 @@ pub enum Expr {
     Grouping(Box<Expr>),
     Unary { operator: Token, right: Box<Expr> },
     Binary { left: Box<Expr>, operator: Token, right: Box<Expr> },
+    Variable(Token),
+    Assign { name: Token, value: Box<Expr> },
 }
