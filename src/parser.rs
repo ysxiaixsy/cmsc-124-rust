@@ -22,6 +22,9 @@ pub struct Parser {
     depth: usize,
     // how many blocks enclose the statement being parsed. its expressions start this deep
     block_depth: usize,
+    // every syntax error so far. a block records its own statements' errors here and keeps
+    // going, so one mistake inside braces doesn't throw away the rest of the block
+    errors: Vec<ParseError>,
 }
 
 impl Parser {
@@ -31,6 +34,7 @@ impl Parser {
             current: 0,
             depth: 0,
             block_depth: 0,
+            errors: Vec::new(),
         }
     }
 
@@ -38,26 +42,32 @@ impl Parser {
     // collect every syntax error; return a root only on success
     pub fn parse(&mut self) -> Result<Program, Vec<ParseError>> {
         let mut statements = Vec::new();
-        let mut errors = Vec::new();
 
         while !self.is_at_end() {
-            let statement_start = self.current;
-            // an error inside a block unwinds straight to here, past every block it was in
-            self.block_depth = 0;
-            self.depth = 0;
-            match self.declaration() {
-                Ok(statement) => statements.push(statement),
-                Err(error) => {
-                    errors.push(error);
-                    self.synchronize(statement_start);
-                }
+            if let Some(statement) = self.recovering_declaration() {
+                statements.push(statement);
             }
         }
 
-        if errors.is_empty() {
+        if self.errors.is_empty() {
             Ok(Program { statements })
         } else {
-            Err(errors)
+            Err(std::mem::take(&mut self.errors))
+        }
+    }
+
+    // one declaration at the program's top level or inside a block. a failure is recorded and
+    // the cursor moves to the next statement boundary, so parsing can carry on from there
+    fn recovering_declaration(&mut self) -> Option<Stmt> {
+        let statement_start = self.current;
+        self.depth = self.block_depth;
+        match self.declaration() {
+            Ok(statement) => Some(statement),
+            Err(error) => {
+                self.errors.push(error);
+                self.synchronize(statement_start);
+                None
+            }
         }
     }
 
@@ -104,14 +114,19 @@ impl Parser {
         let brace = self.previous().clone();
         if self.block_depth >= MAX_NESTING {
             let message = format!("Blocks nested too deeply (limit is {MAX_NESTING} levels).");
-            return Err(self.error(&brace, &message));
+            let error = self.error(&brace, &message);
+            // skip to this block's own closing brace without recursing, which is the point
+            // of the limit, so its closers don't each come back as a stray '}' error
+            self.skip_to_matching_brace();
+            return Err(error);
         }
         self.block_depth += 1;
 
         let mut statements = Vec::new();
         while !self.check(&Tokentypes::RightBrace) && !self.is_at_end() {
-            self.depth = self.block_depth;
-            statements.push(self.declaration()?);
+            if let Some(statement) = self.recovering_declaration() {
+                statements.push(statement);
+            }
         }
 
         self.block_depth -= 1;
@@ -373,18 +388,47 @@ impl Parser {
         Err(self.error(self.peek(), message))
     }
 
-    // stop after the failed statement's terminator, preserving the next statement.
+    // skip past the failed statement to the next place a statement can begin: just after a
+    // semicolon, or just before a token that starts a statement (`hold`, `spittin`, `{`) or
+    // ends a block (`}`). stopping before `}` is what lets the enclosing block still close.
     // a delimiter already consumed by the failed production is also a recovery boundary
     fn synchronize(&mut self, statement_start: usize) {
-        if self.current > statement_start && self.previous().token_type == Tokentypes::Semicolon {
+        // a statement that failed on its very first token must still move past it, or a
+        // stray `}` at the top level would be retried forever
+        if self.current == statement_start {
+            self.advance();
+        }
+        if matches!(
+            self.previous().token_type,
+            Tokentypes::Semicolon | Tokentypes::RightBrace
+        ) {
             return;
         }
         while !self.is_at_end() {
-            let is_terminator = self.peek().token_type == Tokentypes::Semicolon;
-            self.advance();
-            if is_terminator {
-                return;
+            match self.peek().token_type {
+                Tokentypes::Hold
+                | Tokentypes::Spittin
+                | Tokentypes::LeftBrace
+                | Tokentypes::RightBrace => return,
+                Tokentypes::Semicolon => {
+                    self.advance();
+                    return;
+                }
+                _ => self.advance(),
             }
+        }
+    }
+
+    // called just after a `{`: consume tokens up to and including its matching `}`, or EOF
+    fn skip_to_matching_brace(&mut self) {
+        let mut open = 1;
+        while open > 0 && !self.is_at_end() {
+            match self.peek().token_type {
+                Tokentypes::LeftBrace => open += 1,
+                Tokentypes::RightBrace => open -= 1,
+                _ => {}
+            }
+            self.advance();
         }
     }
 
