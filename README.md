@@ -181,6 +181,7 @@ primary    → NUM | DEC | STRING | "nocap" | "cap" | "nil" | IDENTIFIER | "(" e
 - **Where bindings are legal:** `hold` is a declaration, so it can begin a statement but cannot appear inside an expression: `spittin hold x = 1;` is a syntax error. The initializer is optional, and the name must be an identifier, so a keyword cannot be declared.
 - **Assignment** is an expression, legal anywhere an expression is, and it produces the assigned value: `spittin x = 2;` prints `2`, and `hold y = (x = 3);` binds both. `assignment` calls itself on the right, so `a = b = 1` groups as `a = (b = 1)`.
 - **Assignment targets:** the parser reads the left side as an ordinary expression, then checks that it is a bare name when it finds `=`. `1 = 2;`, `(a) = 2;`, `-a = 2;`, and `a + b = 3;` are all rejected before anything runs, with exit `65`.
+- **Nesting limit:** an expression's tree can be at most 10,000 levels deep. A group, a unary operator, an assignment, and each binary operator add a level, so `1 + 1 + 1` is two levels deep because `+` groups from the left, and `(a) + (b)` counts only its deeper side plus one. Each statement starts again from zero. Past the limit is a syntax error with exit `65`. The parser, evaluator, and printer all recurse once per level, so the interpreter runs on a 256 MB stack, and the limit keeps every expression well inside it instead of letting the host stack overflow and abort the process.
 - **Program structure:** the parser returns one `Program` root containing an ordered list of statement children. Each child contains the existing expression tree. The parser consumes the complete file through EOF; it does not return independent expression roots. Newlines are whitespace, so `1 +` followed by `2;` continues one expression, and a leading `-` on a later line can continue the preceding expression when no semicolon intervenes. A multiline string remains one literal node.
 - `nil` is a literal, introduced in Lab 3. Its token has type `Nil` and no payload; its AST node is `Literal::Nil`.
 - **Statements:** `spittin` was reserved as the output keyword from Lab 1 and is wired up in Lab 4. One token of lookahead picks the branch, so `statement` needs no backtracking. A print statement is a statement, not an expression: `spittin` cannot appear inside an expression, and `spittin spittin 1;` is a syntax error.
@@ -296,6 +297,7 @@ Syntax errors from `--parse` name the line and the token where parsing failed, o
 ```
 [line 1] Error at ')': Expect expression.
 [line 3] Error at '+': Expect expression.
+[line 128] Error at '(': Expression nested too deeply (limit is 10000 levels).
 ```
 
 The parser reports syntax errors with the token line and continues recovery at a statement boundary (a semicolon) or EOF, while ensuring it makes progress. A missing semicolon, including after the last expression at EOF, is a syntax error. A missing operand is reported at the token or EOF where parsing fails. The parser publishes no program if any syntax errors occurred. Like `--tokenize`, a rejected file prints nothing to stdout and exits `65`.
@@ -304,7 +306,7 @@ The parser reports syntax errors with the token line and continues recovery at a
 | Failure | Exit code |
 |---|---|
 | lexical error: unexpected character or unterminated string | 65 |
-| syntax error: a missing `)`, a missing operand, a token that can't start an expression, a malformed `hold`, or an invalid assignment target | 65 |
+| syntax error: a missing `)`, a missing operand, a token that can't start an expression, a malformed `hold`, an invalid assignment target, or an expression nested past the limit | 65 |
 | runtime type error, division by zero, or an undefined variable | 70 |
 
 
@@ -392,6 +394,11 @@ tests/lab3/operators/equality.trap                  == and != across matching an
 tests/lab3/operators/precedence_chain.trap          term over comparison over equality in one expression
 tests/lab3/statements/multiline_statements.trap     statements span and share lines; semicolons in strings and comments stay literal
 tests/lab3/statements/comment_only.trap             a file of only comments prints nothing
+tests/lab3/nesting/parens_at_limit.trap             10000 nested groups still run
+tests/lab3/nesting/unary_at_limit.trap              10000 chained ! still run
+tests/lab3/nesting/chain_at_limit.trap              10000 + operators still run
+tests/lab3/nesting/siblings_do_not_add_up.trap      two sides 6000 deep count as the deeper one, not their sum
+tests/lab3/nesting/limit_is_per_statement.trap      two statements 6000 deep each count from zero
 tests/lab3/errors/runtime/division_by_zero.trap     dividing by negative zero stops evaluation but keeps earlier output; exits 70
 tests/lab3/errors/runtime/mixed_addition.trap       + on a string and a number; exits 70
 tests/lab3/errors/runtime/wrong_arithmetic_type.trap - on a string; exits 70
@@ -400,6 +407,14 @@ tests/lab3/errors/runtime/wrong_negation_type.trap  unary minus on nil; exits 70
 tests/lab3/errors/syntax/missing_final_semicolon.trap a final expression with no semicolon rejects the whole file; exits 65
 tests/lab3/errors/syntax/recovery_statements.trap   three malformed statements all report after recovery; exits 65
 tests/lab3/errors/syntax/static_error.trap          an unclosed group rejects the file before anything evaluates; exits 65
+tests/lab3/errors/syntax/nesting_parens_over_limit.trap 10001 nested groups are rejected and nothing runs; exits 65
+tests/lab3/errors/syntax/nesting_unary_over_limit.trap 10001 chained ! are rejected; exits 65
+tests/lab3/errors/syntax/nesting_equality_over_limit.trap 10001 == operators are rejected; exits 65
+tests/lab3/errors/syntax/nesting_comparison_over_limit.trap 10001 < operators are rejected; exits 65
+tests/lab3/errors/syntax/nesting_term_over_limit.trap 10001 + operators are rejected; exits 65
+tests/lab3/errors/syntax/nesting_factor_over_limit.trap 10001 * operators are rejected; exits 65
+tests/lab3/errors/syntax/nesting_grows_through_group.trap a chain inside a group plus a chain outside it pass the limit together; exits 65
+tests/lab3/errors/syntax/nesting_right_operand_counts.trap a deep right operand counts toward its operator's depth; exits 65
 
 tests/lab4/output/hello.trap                                  spittin prints every value type
 tests/lab4/output/script_mode.trap                            bare expression values are discarded between spittin statements
@@ -411,6 +426,7 @@ tests/lab4/bindings/names_are_exact.trap                      case, digits, unde
 tests/lab4/assignment/updates_binding.trap                    = changes a binding's value and its type
 tests/lab4/assignment/as_expression.trap                      assignment produces its value, chains from the right, and nests in expressions
 tests/lab4/assignment/copies_value.trap                       assigning to one name leaves a name bound from it unchanged
+tests/lab4/assignment/chain_at_limit.trap                     10000 chained assignments still run
 tests/lab4/errors/runtime/print_runtime_error.trap            a runtime error in spittin keeps earlier output; exits 70
 tests/lab4/errors/runtime/undefined_read.trap                 reading an undeclared name; exits 70
 tests/lab4/errors/runtime/undefined_assignment.trap           assigning an undeclared name; exits 70
@@ -427,6 +443,7 @@ tests/lab4/errors/syntax/invalid_assignment_literal.trap      a literal cannot b
 tests/lab4/errors/syntax/invalid_assignment_grouped.trap      a grouped name cannot be assigned; exits 65
 tests/lab4/errors/syntax/invalid_assignment_binary.trap       a binary expression cannot be assigned, and nothing runs first; exits 65
 tests/lab4/errors/syntax/invalid_assignment_unary.trap        a unary expression cannot be assigned; exits 65
+tests/lab4/errors/syntax/nesting_assignment_over_limit.trap   10001 chained assignments are rejected; exits 65
 ```
 
 Run locally with:
@@ -473,6 +490,7 @@ guess `var`, but this tradeoff is worth it because personality creates identity.
 - The REPL handles each submitted line as a complete program (evaluating by default, scanning with `--tokenize`, parsing with `--parse`), so line numbers restart at 1 on every line. Parse and evaluation input requires a semicolon after every expression statement. An unfinished expression or missing semicolon reports an error and returns to the prompt; the REPL does not buffer multiple lines into one program. A string cannot continue onto the next REPL input line: a multiline string that works in a file is an unterminated-string error in the REPL.
 - `locked` is reserved but has no grammar yet, so `locked x = 1;` is "Expect expression".
 - Parser recovery only stops at semicolons, so a missing semicolon hides any error in the statement right after it.
+- Expressions can nest at most 10,000 levels. The `tests/lab3/nesting/` and `nesting_*_over_limit` tests are written against that exact number, so changing it means regenerating them.
 
 ## Changelog
 
@@ -519,5 +537,8 @@ once per file run or REPL session, so REPL variables survive across lines and er
 and its value inside expressions, redeclaration, value copying, and exact name matching,
 then one error per file: undefined reads and assignments at exit 70, and malformed `hold`
 declarations and invalid assignment targets at exit 65.
+
+Deep nesting now reports a syntax error instead of overflowing the host stack: the interpreter
+runs on a 256 MB stack, and the parser rejects any expression deeper than 10,000 levels.
 
 Nested scopes, shadowing, and recovery beyond semicolons are Week 3.
