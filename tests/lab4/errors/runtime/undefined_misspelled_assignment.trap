@@ -1,0 +1,3 @@
+hold counter = 1;
+spittin counter; // expect: 1
+countr = 2; // expect runtime error: Undefined variable 'countr'.

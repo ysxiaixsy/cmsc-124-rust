@@ -26,7 +26,7 @@ TrapScript is a dynamically typed scripting language styled on internet slang.
 | `./run --parse <file>` | Parses the file and prints each expression statement in prefix form, one line per statement, or every scan or syntax error to stderr. |
 | `./run --help` | Prints the supported command forms. |
 | `./run --eval <file>` | Evaluates the file and prints the value of **every** expression statement, the Lab 3 contract. Kept separate from plain `./run` so the Lab 3 tests stay meaningful now that a program speaks only through `spittin`. |
-| `./run` | Starts the evaluator REPL. Each input line is a complete program and must include a semicolon after every statement. Values print in statement order; errors report a diagnostic and return the prompt. End with Ctrl+Z then Enter on Windows, or Ctrl+D on Linux/macOS. |
+| `./run` | Starts the evaluator REPL. Each input line is a complete program and must include a semicolon after every statement. Values print in statement order; errors report a diagnostic and return the prompt. Bindings persist across lines for the whole session, including after an error. End with Ctrl+Z then Enter on Windows, or Ctrl+D on Linux/macOS. |
 | `./run --tokenize` | Starts the scanner REPL. |
 | `./run --eval` | Starts the evaluator REPL explicitly. |
 | `./run --parse` | Starts the REPL at the parser instead. Each input line is a complete program; every statement needs a semicolon. It prints one expression tree per statement. |
@@ -83,7 +83,7 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 | Symbol | Purpose |
 |---|---|
 | `,` | separates function parameters and call arguments |
-| `;` | terminates an expression statement |
+| `;` | terminates a statement or declaration |
 
 ### Literals
 
@@ -112,7 +112,7 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 ## Whitespace and termination
 
 - Whitespace: spaces, tabs, and newlines outside strings separate tokens and are otherwise ignored. Newlines do not end statements.
-- Statement terminator: `;` (Semicolon). Every expression statement needs one, including the final statement immediately before EOF.
+- Statement terminator: `;` (Semicolon). Every statement and declaration needs one, including the final one immediately before EOF.
 - A semicolon inside a string or a `//` comment is part of that literal or comment, not a terminator.
 - Expressions and parenthesized groups can span lines. Multiple statements can share a line. Blank and comment-only lines are allowed.
 - Empty statements are not supported: a bare or repeated semicolon is a syntax error. An empty program is accepted.
@@ -157,32 +157,41 @@ Frozen as of Lab 1; changes are recorded in the changelog.
 ## Grammar
 
 ```
-program             → statement* EOF
-statement           → printStatement | expressionStatement
+program             → declaration* EOF
+declaration         → holdDeclaration | statement
+holdDeclaration     → "hold" IDENTIFIER ( "=" expression )? ";"
+statement           → block | printStatement | expressionStatement
+block               → "{" declaration* "}"
 printStatement      → "spittin" expression ";"
 expressionStatement → expression ";"
-expression → equality
+expression → assignment
+assignment → IDENTIFIER "=" assignment | equality
 equality   → comparison ( ( "!=" | "==" ) comparison )*
 comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term       → factor ( ( "-" | "+" ) factor )*
 factor     → unary ( ( "/" | "*" ) unary )*
 unary      → ( "!" | "-" ) unary | primary
-primary    → NUM | DEC | STRING | "nocap" | "cap" | "nil" | "(" expression ")"
+primary    → NUM | DEC | STRING | "nocap" | "cap" | "nil" | IDENTIFIER | "(" expression ")"
 ```
 
 - Quoted terminals are tokens. `NUM`, `DEC`, and `STRING` are the scanner's integer, decimal, and string tokens. `true` and `false` produce the same tokens as `nocap` and `cap` for now (see known limitations).
-- The rules go from loosest-binding (`equality`) to tightest (`primary`), and each rule only calls the one below it. That is what makes `!` bind tighter than `==`: `!nocap == cap` parses as `(== (! nocap) cap)`.
+- The rules go from loosest-binding (`assignment`) to tightest (`primary`), and each rule only calls the one below it. That is what makes `!` bind tighter than `==`: `!nocap == cap` parses as `(== (! nocap) cap)`.
 - The `( ... )*` loops make every binary operator left-associative: `1 != 2 != 3` parses as `(!= (!= 1.0 2.0) 3.0)`.
 - `unary` calls itself, so unary operators chain and group from the right: `!!nocap` parses as `(! (! nocap))`.
-- Every rule above is implemented. `primary` has no identifier branch yet, so names are not expressions until variables arrive in Lab 4.
-- **Program structure:** the parser returns one `Program` root containing an ordered list of expression-statement children. Each child contains the existing expression tree. The parser consumes the complete file through EOF; it does not return independent expression roots. Newlines are whitespace, so `1 +` followed by `2;` continues one expression, and a leading `-` on a later line can continue the preceding expression when no semicolon intervenes. A multiline string remains one literal node.
+- Every rule above is implemented. An identifier in an expression reads that binding.
+- **Where bindings are legal:** `hold` is a declaration, so it can begin a statement but cannot appear inside an expression: `spittin hold x = 1;` is a syntax error. The initializer is optional, and the name must be an identifier, so a keyword cannot be declared.
+- **Assignment** is an expression, legal anywhere an expression is, and it produces the assigned value: `spittin x = 2;` prints `2`, and `hold y = (x = 3);` binds both. `assignment` calls itself on the right, so `a = b = 1` groups as `a = (b = 1)`.
+- **Assignment targets:** the parser reads the left side as an ordinary expression, then checks that it is a bare name when it finds `=`. `1 = 2;`, `(a) = 2;`, `-a = 2;`, and `a + b = 3;` are all rejected before anything runs, with exit `65`.
+- **Nesting limit:** an expression's tree can be at most 10,000 levels deep. A group, a unary operator, an assignment, and each binary operator add a level, so `1 + 1 + 1` is two levels deep because `+` groups from the left, and `(a) + (b)` counts only its deeper side plus one. Each enclosing block also adds a level, so blocks can nest at most 10,000 deep, and a statement's expression starts counting from the depth of the blocks around it. Each top-level statement starts again from zero. Past the limit is a syntax error with exit `65`. The parser, evaluator, and printer all recurse once per level, so the interpreter runs on a 256 MB stack, and the limit keeps every expression well inside it instead of letting the host stack overflow and abort the process.
+- **Program structure:** the parser returns one `Program` root containing an ordered list of statement children. Each child contains the existing expression tree. The parser consumes the complete file through EOF; it does not return independent expression roots. Newlines are whitespace, so `1 +` followed by `2;` continues one expression, and a leading `-` on a later line can continue the preceding expression when no semicolon intervenes. A multiline string remains one literal node.
 - `nil` is a literal, introduced in Lab 3. Its token has type `Nil` and no payload; its AST node is `Literal::Nil`.
 - **Statements:** `spittin` was reserved as the output keyword from Lab 1 and is wired up in Lab 4. One token of lookahead picks the branch, so `statement` needs no backtracking. A print statement is a statement, not an expression: `spittin` cannot appear inside an expression, and `spittin spittin 1;` is a syntax error.
+- **Blocks:** `{` begins a block, which holds any number of declarations and statements and ends at the matching `}`. A block is itself a statement, so blocks nest, and no semicolon follows the `}`. `{}` is an empty block. A block that reaches EOF without its `}` is a syntax error.
 - **Script mode:** running a file executes its statements in order, and only `spittin` writes to stdout. A bare expression statement is still evaluated, so its runtime errors still fire, but its value is discarded. `--eval` keeps the Lab 3 behaviour of printing every expression statement's value, which is why both entry points exist.
 
 ## Parse output format
 
-The program root is not printed as a wrapper. The printer visits its statement children and preserves the existing prefix expression format, with one output line per expression statement. Output line breaks do not represent separate AST roots.
+The program root is not printed as a wrapper. The printer visits its statement children and preserves the existing prefix expression format, with one output line per statement. Output line breaks do not represent separate AST roots.
 
 ```
 (!= (group (== 1.0 2.0)) (! cap))
@@ -190,7 +199,10 @@ The program root is not printed as a wrapper. The printer visits its statement c
 
 That is the output for `(1 == 2) != !cap`.
 
-- One line per expression statement, in prefix form: the operator comes first, then its operands.
+- One line per statement, in prefix form: the operator comes first, then its operands.
+- Statements with a keyword lead with it: `(spittin 1.0)`, `(hold x 1.0)`, and `(hold x)` when there is no initializer.
+- Names print bare, and assignment prints as an operator: `(= x (+ x 1.0))`.
+- A block prints on one line with its statements in order: `{ hold x = 1; spittin x; }` prints as `(block (hold x 1.0) (spittin x))`, and `{}` prints as `(block)`.
 - Groupings print as: `(group ...)`
 - Numbers print as: always with a decimal point, so `5` prints as `5.0` and `3.14` as `3.14`
 - Strings print in double quotes with control characters and backslashes escaped: a string containing a newline prints as `"first\nsecond"` on one output line, and a literal backslash prints as `\\`
@@ -230,7 +242,7 @@ Operators that need numbers share one check, so they report the same diagnostic.
 
 ### Truthiness
 
-Only `cap` and `nil` are falsey; all other values, including zero and the empty string, are truthy. The rule lives in one function, so `!` and every later conditional answer the same way. `!` takes any value and never reports a type error. `tests/lab3/truthiness.trap` is the executable statement of this rule.
+Only `cap` and `nil` are falsey; all other values, including zero and the empty string, are truthy. The rule lives in one function, so `!` and every later conditional answer the same way. `!` takes any value and never reports a type error. `tests/lab3/values/truthiness.trap` is the executable statement of this rule.
 
 ### Operator semantics
 
@@ -243,10 +255,20 @@ Only `cap` and `nil` are falsey; all other values, including zero and the empty 
 
 ### Scope and bindings
 
-- Redeclaration in the same scope: [allowed or an error]
-- Uninitialized variable holds: [value]
-- Shadowing: [behavior]
-- Undefined name: [static error with exit 65, or runtime error with exit 70]
+- Paradigm: imperative. `hold` creates a binding, `=` changes it in place, and `spittin` makes results observable.
+- Mutability: every binding is mutable. Typing is dynamic, so assignment can change both a binding's value and its type. `locked` stays reserved for constants and has no grammar yet.
+- Declaring against assigning: `hold` binds in the innermost environment without searching and cannot fail. `=` only updates an existing binding and never creates one, so a misspelled name is an error rather than a new variable.
+- Redeclaration in the same scope: allowed. A later `hold` replaces the earlier binding, which keeps retyping a line at the REPL painless. The initializer runs first, so `hold x = x + 1;` reads the old `x`, and `hold x;` resets it to `nil`.
+- Uninitialized variable holds: `nil`.
+- Visibility: a binding becomes visible once its `hold` finishes, so a first declaration cannot read itself in its own initializer.
+- Scope: static (lexical). The program starts in one global environment, and each block runs in a new environment whose enclosing environment is the one the block sits in. A read or an assignment searches the innermost environment first, then each enclosing one out to global, and stops at the first binding of that name; if none has it, the name is undefined. The search follows how the source nests, never the order of calls, so when functions arrive in Lab 5 a function will look up names from where it was defined, not from where it was called.
+- Shadowing: a `hold` inside a block always creates a new binding in that block, even when an enclosing environment already has the name. The inner binding hides the outer one until the block ends; the outer one stays alive and unchanged, and is visible again after the `}`. Assigning with `=` inside the block changes whichever binding the search finds first, so it changes the outer binding only when the block has not shadowed it.
+- Shadowing an outer name with itself: inside a block, `hold x = x;` reads the outer `x` and then creates the inner one, because the initializer runs before the name is bound. This follows the same rule as `hold x = x + 1;` at one level, so there is no special case and no separate resolution pass. `hold y = y;` still fails when no environment has a `y`.
+- Binding time: a name binds to storage and to its first value when `hold` executes, and to a new value at each assignment. Its type is never declared; it follows whichever value it currently holds.
+- Scope against lifetime: a block's binding can be named from its `hold` to the block's `}`. Its storage exists while that block is running and is released when the block exits, so reading it after the `}` is `Undefined variable`. A shadowed binding shows the difference: it is alive inside the inner block but cannot be named there.
+- Storage lifetime: a global binding lasts from the moment `hold` executes until the program ends, or until the session ends in the REPL, so it is static storage in the sense of lasting for the program. A block's bindings are stack-dynamic: created when their `hold` runs and released when the block exits, including when it exits through a runtime error. The Rust `HashMap` behind each environment is an implementation detail, not a promise of heap-dynamic storage.
+- Values are copied on binding: after `hold b = a;`, assigning to `a` leaves `b` unchanged.
+- Undefined name: runtime error with exit 70 and `Undefined variable 'a'.`, for both reading and assigning. The check happens when the name is evaluated, so code that never runs never reports, and Lab 5's mutually recursive functions need no separate resolution pass. The right side of an assignment runs first, so `z = 1 / 0;` reports the division by zero even if `z` is undefined.
 
 ### Control flow and functions
 
@@ -280,16 +302,19 @@ Syntax errors from `--parse` name the line and the token where parsing failed, o
 ```
 [line 1] Error at ')': Expect expression.
 [line 3] Error at '+': Expect expression.
+[line 128] Error at '(': Expression nested too deeply (limit is 10000 levels).
+[line 4] Error at end: Expect '}' after block.
+[line 1] Error at '{': Blocks nested too deeply (limit is 10000 levels).
 ```
 
-The parser reports syntax errors with the token line and continues recovery at a statement boundary (a semicolon) or EOF, while ensuring it makes progress. A missing semicolon, including after the last expression at EOF, is a syntax error. A missing operand is reported at the token or EOF where parsing fails. The parser publishes no program if any syntax errors occurred. Like `--tokenize`, a rejected file prints nothing to stdout and exits `65`.
+The parser reports syntax errors with the token line and continues recovery at a statement boundary, or EOF, while ensuring it makes progress. A statement boundary is just after a semicolon, or just before a token that starts a statement (`hold`, `spittin`, `{`) or ends a block (`}`). Stopping before `}` means an error inside a block is recorded and the block still parses to its own closing brace, so one mistake does not turn the rest of the block, or its `}`, into further errors. A `}` with no open block is reported once and skipped. A block nested past the limit is reported once and skipped through its matching `}`. A missing semicolon, including after the last expression at EOF, is a syntax error. A missing operand is reported at the token or EOF where parsing fails. The parser publishes no program if any syntax errors occurred. Like `--tokenize`, a rejected file prints nothing to stdout and exits `65`.
 
 
 | Failure | Exit code |
 |---|---|
 | lexical error: unexpected character or unterminated string | 65 |
-| syntax error: a missing `)`, a missing operand, or a token that can't start an expression | 65 |
-| runtime type error, division by zero, or an operator deferred to Week 2 | 70 |
+| syntax error: a missing `)`, a missing operand, a token that can't start an expression, a malformed `hold`, an invalid assignment target, an unclosed block or a stray `}`, or an expression or block nested past the limit | 65 |
+| runtime type error, division by zero, or an undefined variable | 70 |
 
 
 ## Testing conventions
@@ -306,7 +331,7 @@ The parser reports syntax errors with the token line and continues recovery at a
 
 
 ```
-tests/lab1/boolean_keywords_and_identifier_prefixes.trap       nocap and cap scan as booleans; capital and nocapper stay identifiers
+tests/lab1/keywords/boolean_keywords_and_identifier_prefixes.trap nocap and cap scan as booleans; capital and nocapper stay identifiers
 tests/lab1/keywords/all_keywords_and_token_categories.trap     every keyword together in one program
 tests/lab1/keywords/blank_lines_preserve_line_numbers.trap     blank lines between code keep line numbers right
 tests/lab1/keywords/condition_with_comparisons_and_string.trap ong with >= and < and a string
@@ -325,7 +350,8 @@ tests/lab1/errors/unexpected_at_character.trap                  unexpected @ aft
 tests/lab1/errors/unexpected_hash_character.trap                unexpected #; exits 65
 tests/lab1/errors/unterminated_multiline_string.trap            unterminated string across lines; exits 65
 tests/lab1/errors/multiple_unexpected_characters.trap          scanner reports more than one error; exits 65
-tests/lab1/empty_file.trap                                      empty source emits only EOF
+tests/lab1/whitespace/empty_file.trap                           empty source emits only EOF
+tests/lab1/literals/source_text_and_values.trap                 lexemes and literal values for numbers, strings, and booleans
 tests/lab1/strings/empty_string.trap                            empty string literal
 tests/lab1/strings/multiline_string.trap                        valid string spanning two lines
 tests/lab1/strings/backslash_does_not_escape_quote.trap         backslash is ordinary; the quote ends the string
@@ -366,6 +392,79 @@ tests/lab2/errors/missing_statement_semicolon.trap adjacent statements without a
 tests/lab2/errors/empty_statements.trap        bare and repeated semicolons are rejected; exits 65
 tests/lab2/errors/recovery_statements.trap      malformed statements recover at semicolons; exits 65
 tests/lab2/errors/multiline_string_same_line_followup.trap  a multiline string expression followed by a token without a semicolon; exits 65
+tests/lab2/statements/block.trap               nested and empty blocks print as (block ...) on one line
+
+tests/lab3/values/literals.trap                     every literal evaluates to its value, including the empty string
+tests/lab3/values/truthiness.trap                   only cap and nil are falsey under !; zero and "" are truthy
+tests/lab3/operators/arithmetic.trap                + - * / with precedence, left associativity, unary minus, and string +
+tests/lab3/operators/comparison.trap                the four comparisons, including the < against <= boundary
+tests/lab3/operators/equality.trap                  == and != across matching and mismatched types
+tests/lab3/operators/precedence_chain.trap          term over comparison over equality in one expression
+tests/lab3/statements/multiline_statements.trap     statements span and share lines; semicolons in strings and comments stay literal
+tests/lab3/statements/comment_only.trap             a file of only comments prints nothing
+tests/lab3/nesting/parens_at_limit.trap             10000 nested groups still run
+tests/lab3/nesting/unary_at_limit.trap              10000 chained ! still run
+tests/lab3/nesting/chain_at_limit.trap              10000 + operators still run
+tests/lab3/nesting/siblings_do_not_add_up.trap      two sides 6000 deep count as the deeper one, not their sum
+tests/lab3/nesting/limit_is_per_statement.trap      two statements 6000 deep each count from zero
+tests/lab3/errors/runtime/division_by_zero.trap     dividing by negative zero stops evaluation but keeps earlier output; exits 70
+tests/lab3/errors/runtime/mixed_addition.trap       + on a string and a number; exits 70
+tests/lab3/errors/runtime/wrong_arithmetic_type.trap - on a string; exits 70
+tests/lab3/errors/runtime/wrong_comparison_type.trap < on a string; exits 70
+tests/lab3/errors/runtime/wrong_negation_type.trap  unary minus on nil; exits 70
+tests/lab3/errors/syntax/missing_final_semicolon.trap a final expression with no semicolon rejects the whole file; exits 65
+tests/lab3/errors/syntax/recovery_statements.trap   three malformed statements all report after recovery; exits 65
+tests/lab3/errors/syntax/static_error.trap          an unclosed group rejects the file before anything evaluates; exits 65
+tests/lab3/errors/syntax/nesting_parens_over_limit.trap 10001 nested groups are rejected and nothing runs; exits 65
+tests/lab3/errors/syntax/nesting_unary_over_limit.trap 10001 chained ! are rejected; exits 65
+tests/lab3/errors/syntax/nesting_equality_over_limit.trap 10001 == operators are rejected; exits 65
+tests/lab3/errors/syntax/nesting_comparison_over_limit.trap 10001 < operators are rejected; exits 65
+tests/lab3/errors/syntax/nesting_term_over_limit.trap 10001 + operators are rejected; exits 65
+tests/lab3/errors/syntax/nesting_factor_over_limit.trap 10001 * operators are rejected; exits 65
+tests/lab3/errors/syntax/nesting_grows_through_group.trap a chain inside a group plus a chain outside it pass the limit together; exits 65
+tests/lab3/errors/syntax/nesting_right_operand_counts.trap a deep right operand counts toward its operator's depth; exits 65
+
+tests/lab4/output/hello.trap                                  spittin prints every value type
+tests/lab4/output/script_mode.trap                            bare expression values are discarded between spittin statements
+tests/lab4/output/silent_expressions.trap                     a file of bare expressions prints nothing
+tests/lab4/bindings/hold_and_lookup.trap                      hold binds every value type; names read back alone and inside expressions
+tests/lab4/bindings/hold_without_initializer.trap             hold with no initializer holds nil until assigned
+tests/lab4/bindings/redeclaration.trap                        a later hold replaces the binding, and its initializer reads the old value
+tests/lab4/bindings/names_are_exact.trap                      case, digits, underscores, and keyword prefixes make distinct names
+tests/lab4/assignment/updates_binding.trap                    = changes a binding's value and its type
+tests/lab4/assignment/as_expression.trap                      assignment produces its value, chains from the right, and nests in expressions
+tests/lab4/assignment/copies_value.trap                       assigning to one name leaves a name bound from it unchanged
+tests/lab4/assignment/chain_at_limit.trap                     10000 chained assignments still run
+tests/lab4/scopes/shadowing.trap                              an inner hold hides the outer name, which is unchanged after the block
+tests/lab4/scopes/assign_outer.trap                           = inside nested blocks updates the outer binding, and the change lasts
+tests/lab4/scopes/nested_lookup.trap                          lookup searches outward and stops at the first match
+tests/lab4/scopes/hold_reads_outer.trap                       hold x = x + 1 in a block reads the outer x, then shadows it
+tests/lab4/scopes/empty_and_nested.trap                       empty blocks and blocks nested three deep
+tests/lab4/scopes/blocks_at_limit.trap                        10000 nested blocks still run
+tests/lab4/errors/runtime/block_binding_ends.trap             a block's binding is undefined after its }; exits 70
+tests/lab4/errors/runtime/assign_in_block_does_not_create.trap = in a block never creates a binding; exits 70
+tests/lab4/errors/runtime/print_runtime_error.trap            a runtime error in spittin keeps earlier output; exits 70
+tests/lab4/errors/runtime/undefined_read.trap                 reading an undeclared name; exits 70
+tests/lab4/errors/runtime/undefined_assignment.trap           assigning an undeclared name; exits 70
+tests/lab4/errors/runtime/undefined_in_own_initializer.trap   a first hold cannot read itself; exits 70
+tests/lab4/errors/runtime/undefined_keeps_earlier_output.trap an undefined read stops the program but keeps earlier output; exits 70
+tests/lab4/errors/runtime/undefined_misspelled_assignment.trap a misspelled assignment is an error, not a new variable; exits 70
+tests/lab4/errors/syntax/missing_semicolon.trap               spittin with no semicolon; exits 65
+tests/lab4/errors/syntax/hold_missing_semicolon.trap          hold with no semicolon; exits 65
+tests/lab4/errors/syntax/hold_missing_name.trap               hold with no name; exits 65
+tests/lab4/errors/syntax/hold_keyword_as_name.trap            a keyword cannot be declared; exits 65
+tests/lab4/errors/syntax/hold_missing_initializer.trap        = with no initializer; exits 65
+tests/lab4/errors/syntax/hold_inside_expression.trap          hold cannot appear inside an expression; exits 65
+tests/lab4/errors/syntax/invalid_assignment_literal.trap      a literal cannot be assigned; exits 65
+tests/lab4/errors/syntax/invalid_assignment_grouped.trap      a grouped name cannot be assigned; exits 65
+tests/lab4/errors/syntax/invalid_assignment_binary.trap       a binary expression cannot be assigned, and nothing runs first; exits 65
+tests/lab4/errors/syntax/invalid_assignment_unary.trap        a unary expression cannot be assigned; exits 65
+tests/lab4/errors/syntax/nesting_assignment_over_limit.trap   10001 chained assignments are rejected; exits 65
+tests/lab4/errors/syntax/nesting_blocks_over_limit.trap       10001 nested blocks are rejected once, with no stray } errors; exits 65
+tests/lab4/errors/syntax/unclosed_block.trap                  a block with no closing }; exits 65
+tests/lab4/errors/syntax/stray_brace.trap                     a } with no open block; exits 65
+tests/lab4/errors/syntax/recovery_in_block.trap               errors inside a block are reported and the block still closes; exits 65
+tests/lab4/errors/syntax/recovery_at_keyword.trap             recovery resumes at spittin and hold after a missing semicolon; exits 65
 ```
 
 Run locally with:
@@ -377,6 +476,7 @@ python3 run_tests.py tests/lab0
 python3 run_tests.py tests/lab1
 python3 run_tests.py tests/lab2
 python3 run_tests.py tests/lab3
+python3 run_tests.py tests/lab4
 ```
 
 On Windows, run these from Git Bash and use `python` instead of `python3`.
@@ -409,7 +509,10 @@ guess `var`, but this tradeoff is worth it because personality creates identity.
 
 - `true` and `false` still scan as booleans alongside `nocap` and `cap`.
 - The REPL handles each submitted line as a complete program (evaluating by default, scanning with `--tokenize`, parsing with `--parse`), so line numbers restart at 1 on every line. Parse and evaluation input requires a semicolon after every expression statement. An unfinished expression or missing semicolon reports an error and returns to the prompt; the REPL does not buffer multiple lines into one program. A string cannot continue onto the next REPL input line: a multiline string that works in a file is an unterminated-string error in the REPL.
-- `--parse` has no identifiers: a name like `x` is "Expect expression" until variables arrive in Lab 4.
+- `locked` is reserved but has no grammar yet, so `locked x = 1;` is "Expect expression".
+- Parser recovery stops at semicolons and before `hold`, `spittin`, `{`, and `}`. A missing semicolon before a statement that begins with an expression still hides any error in that statement, because nothing marks where it starts.
+- A REPL line is a complete program, so a block must open and close on one line.
+- Expressions can nest at most 10,000 levels. The `tests/lab3/nesting/` and `nesting_*_over_limit` tests are written against that exact number, so changing it means regenerating them.
 
 ## Changelog
 
@@ -443,4 +546,42 @@ exits 70, and a missing semicolon that exits 65.
 `tests/lab0/hello.src` is now a TrapScript program that prints its own expectation.
 CI runs Labs 0 through 4.
 
-Bindings, scope, and assignment arrive in Week 2.
+Bindings and assignment arrive in Week 2, and nested scopes in Week 3.
+
+### Lab 4 Week 2 progress
+
+Programs can now remember things. `hold` creates a binding, an identifier reads one, and
+`=` updates one. Assignment is a right-associative expression that produces its value, and
+its target is checked in the parser. All of it lives in one global `Environment`, created
+once per file run or REPL session, so REPL variables survive across lines and errors.
+
+`tests/lab4/` gains binding creation and lookup, `hold` with no initializer, assignment
+and its value inside expressions, redeclaration, value copying, and exact name matching,
+then one error per file: undefined reads and assignments at exit 70, and malformed `hold`
+declarations and invalid assignment targets at exit 65.
+
+Deep nesting now reports a syntax error instead of overflowing the host stack: the interpreter
+runs on a 256 MB stack, and the parser rejects any expression deeper than 10,000 levels.
+
+Nested scopes, shadowing, and recovery beyond semicolons are Week 3.
+
+### Lab 4 Week 3 progress
+
+Blocks bring nested scopes. `{ ... }` is a statement whose declarations run in a new
+environment linked to the one around it, so scope is static: a read or `=` searches the
+innermost environment, then each enclosing one, and stops at the first match. `hold` always
+binds in the innermost environment, which makes shadowing possible, and `=` still never
+creates a binding. A block's bindings are released when it exits, and the enclosing
+environment comes back even after a runtime error, so a REPL session never stays inside a
+failed block. Inside a block, `hold x = x;` reads the outer `x` before shadowing it.
+
+Parser recovery is synchronized: after a syntax error it resumes after a semicolon or before
+`hold`, `spittin`, `{`, or `}`, so an error inside a block no longer leaves a stray `}`
+behind it, and a missing semicolon before a `hold` or `spittin` no longer hides that
+statement's own errors. Blocks count toward the 10,000-level nesting limit.
+
+`tests/lab4/scopes/` covers shadowing, assignment through enclosing scopes, outward lookup,
+`hold` reading the outer name, empty and nested blocks, and the nesting limit. Runtime errors
+cover a binding read after its block ends and `=` that would create a binding; syntax errors
+cover an unclosed block, a stray `}`, recovery inside a block and at keywords, and blocks
+past the limit. `tests/lab2/statements/` covers the `(block ...)` parse output.

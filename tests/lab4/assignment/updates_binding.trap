@@ -1,0 +1,8 @@
+hold count = 1;
+spittin count; // expect: 1
+count = 2;
+spittin count; // expect: 2
+count = count + 10;
+spittin count; // expect: 12
+count = "now a string";
+spittin count; // expect: now a string

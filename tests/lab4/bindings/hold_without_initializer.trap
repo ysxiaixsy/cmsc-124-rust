@@ -1,0 +1,5 @@
+hold empty;
+spittin empty; // expect: nil
+spittin empty == nil; // expect: nocap
+empty = 7;
+spittin empty; // expect: 7

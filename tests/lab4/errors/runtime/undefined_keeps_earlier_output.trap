@@ -1,0 +1,4 @@
+hold known = 1;
+spittin known; // expect: 1
+spittin unknown; // expect runtime error: Undefined variable 'unknown'.
+spittin "not reached";

@@ -1,0 +1,7 @@
+hold x = 1;
+hold x = x + 1;
+spittin x; // expect: 2
+hold x = "fresh";
+spittin x; // expect: fresh
+hold x;
+spittin x; // expect: nil

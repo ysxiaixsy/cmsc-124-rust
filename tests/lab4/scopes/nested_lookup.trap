@@ -1,0 +1,13 @@
+hold a = "global a";
+hold b = "global b";
+hold c = "global c";
+{
+    hold b = "middle b";
+    {
+        hold c = "inner c";
+        spittin a; // expect: global a
+        spittin b; // expect: middle b
+        spittin c; // expect: inner c
+    }
+    spittin c; // expect: global c
+}

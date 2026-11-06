@@ -1,0 +1,6 @@
+spittin 1
+spittin // expect error: [line 2] Error at 'spittin': Expect ';' after spittin value.
+    2 +; // expect error: [line 3] Error at ';': Expect expression.
+hold x = 1
+hold // expect error: [line 5] Error at 'hold': Expect ';' after variable declaration.
+    = 2; // expect error: [line 6] Error at '=': Expect variable name.

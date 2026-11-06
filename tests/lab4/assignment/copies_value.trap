@@ -1,0 +1,5 @@
+hold first = "one";
+hold second = first;
+first = "two";
+spittin first; // expect: two
+spittin second; // expect: one

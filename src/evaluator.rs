@@ -1,6 +1,7 @@
 use std::fmt;
 
 use crate::ast::{Expr, Literal, Program, Stmt};
+use crate::environment::Environment;
 use crate::tokens::{Token, Tokentypes};
 use crate::value::Value;
 
@@ -11,7 +12,7 @@ pub struct RuntimeError {
 }
 
 impl RuntimeError {
-    fn new(token: &Token, message: &str) -> Self {
+    pub fn new(token: &Token, message: &str) -> Self {
         Self {
             line: token.line,
             message: message.to_string(),
@@ -38,29 +39,70 @@ pub enum Output {
     PrintOnly,
 }
 
-// emit values in source order so a later runtime failure preserves earlier output
+// emit values in source order so a later runtime failure preserves earlier output.
+// the caller owns the environment, so bindings can outlive one call: a REPL line, in practice
 pub fn evaluate(
     program: &Program,
+    environment: &mut Environment,
     output: Output,
     mut emit: impl FnMut(Value),
 ) -> Result<(), RuntimeError> {
-    for statement in &program.statements {
-        match statement {
-            // evaluated either way: the value is what gets dropped, never the work
-            Stmt::Expression(expr) => {
-                let value = evaluate_expression(expr)?;
-                if let Output::EveryValue = output {
-                    emit(value);
-                }
+    execute_all(&program.statements, environment, output, &mut emit)
+}
+
+// statements run in source order and the first runtime error stops the rest
+fn execute_all(
+    statements: &[Stmt],
+    environment: &mut Environment,
+    output: Output,
+    emit: &mut dyn FnMut(Value),
+) -> Result<(), RuntimeError> {
+    for statement in statements {
+        execute(statement, environment, output, emit)?;
+    }
+    Ok(())
+}
+
+fn execute(
+    statement: &Stmt,
+    environment: &mut Environment,
+    output: Output,
+    emit: &mut dyn FnMut(Value),
+) -> Result<(), RuntimeError> {
+    match statement {
+        // evaluated either way: the value is what gets dropped, never the work
+        Stmt::Expression(expr) => {
+            let value = evaluate_expression(expr, environment)?;
+            if let Output::EveryValue = output {
+                emit(value);
             }
-            Stmt::Print(expr) => emit(evaluate_expression(expr)?),
+        }
+        Stmt::Print(expr) => emit(evaluate_expression(expr, environment)?),
+        Stmt::Hold { name, initializer } => {
+            // the name is bound only after the initializer finishes, so `hold x = x + 1;`
+            // reads the previous x, even when that x lives in an enclosing scope and this hold
+            // is about to shadow it. `hold y = y;` fails unless some scope already has a y
+            let value = match initializer {
+                Some(expr) => evaluate_expression(expr, environment)?,
+                None => Value::Nil,
+            };
+            environment.define(&name.lexeme, value);
+        }
+        Stmt::Block(statements) => {
+            // nothing between push and pop can return early, so the enclosing scope comes back
+            // even when the block fails. the REPL keeps its environment after a runtime error,
+            // and a scope left pushed would hide the session's own bindings behind the block's
+            environment.push();
+            let result = execute_all(statements, environment, output, emit);
+            environment.pop();
+            result?;
         }
     }
     Ok(())
 }
 
 // walk the tree directly: evaluate the children first, then apply the operator to their values
-fn evaluate_expression(expr: &Expr) -> Result<Value, RuntimeError> {
+fn evaluate_expression(expr: &Expr, environment: &mut Environment) -> Result<Value, RuntimeError> {
     match expr {
         Expr::Literal(literal) => Ok(match literal {
             Literal::Number(value) => Value::Number(*value),
@@ -68,9 +110,17 @@ fn evaluate_expression(expr: &Expr) -> Result<Value, RuntimeError> {
             Literal::Boolean(value) => Value::Boolean(*value),
             Literal::Nil => Value::Nil,
         }),
-        Expr::Grouping(expr) => evaluate_expression(expr),
+        Expr::Grouping(expr) => evaluate_expression(expr, environment),
+        Expr::Variable(name) => environment.get(name),
+        // the right side runs first, and the assignment's own value is what it produces,
+        // which is why `spittin x = 1;` and `a = b = 1;` work
+        Expr::Assign { name, value } => {
+            let value = evaluate_expression(value, environment)?;
+            environment.assign(name, value.clone())?;
+            Ok(value)
+        }
         Expr::Unary { operator, right } => {
-            let right = evaluate_expression(right)?;
+            let right = evaluate_expression(right, environment)?;
             match operator.token_type {
                 Tokentypes::Minus => match right {
                     Value::Number(value) => Ok(Value::Number(-value)),
@@ -88,8 +138,8 @@ fn evaluate_expression(expr: &Expr) -> Result<Value, RuntimeError> {
             right,
         } => {
             // evaluate in source order and propagate the first operand error
-            let left = evaluate_expression(left)?;
-            let right = evaluate_expression(right)?;
+            let left = evaluate_expression(left, environment)?;
+            let right = evaluate_expression(right, environment)?;
             match operator.token_type {
                 Tokentypes::Plus => match (left, right) {
                     (Value::Number(left), Value::Number(right)) => Ok(Value::Number(left + right)),

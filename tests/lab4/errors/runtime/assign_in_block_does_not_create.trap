@@ -1,0 +1,4 @@
+{
+    fresh = 1; // expect runtime error: Undefined variable 'fresh'.
+}
+spittin "not reached";

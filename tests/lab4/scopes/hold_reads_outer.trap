@@ -1,0 +1,8 @@
+hold x = 1;
+{
+    hold x = x + 1;
+    spittin x; // expect: 2
+    hold x = x + 1;
+    spittin x; // expect: 3
+}
+spittin x; // expect: 1

@@ -1,0 +1,12 @@
+hold a = 1;
+hold b = 2;
+spittin a = 5; // expect: 5
+spittin a; // expect: 5
+a = b = 9;
+spittin a; // expect: 9
+spittin b; // expect: 9
+hold result = (a = 15);
+spittin result; // expect: 15
+spittin a; // expect: 15
+spittin (a = 2) + a; // expect: 4
+spittin a == 2; // expect: nocap
