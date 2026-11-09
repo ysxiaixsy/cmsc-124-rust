@@ -486,6 +486,7 @@ python3 run_tests.py tests/lab1
 python3 run_tests.py tests/lab2
 python3 run_tests.py tests/lab3
 python3 run_tests.py tests/lab4
+python3 run_tests.py tests/lab5
 ```
 
 On Windows, run these from Git Bash and use `python` instead of `python3`.
@@ -493,20 +494,29 @@ On Windows, run these from Git Bash and use `python` instead of `python3`.
 ## Sample code
 
 ```
-2 + 3 * 4;
-(2 + 3) * 4;
-"hi" + " there";
-nil;
+hold label = "global";
+hold count = 1;
+{
+  hold label = "shadowed";
+  spittin label;
+  count = count + 1;
+}
+spittin label;
+spittin count;
 ```
 
-Output from `./run --eval <file>`:
+Output from `./run <file>`:
 
 ```
-14
-20
-hi there
-nil
+shadowed
+global
+2
 ```
+
+The inner `hold` shadows `label` until the `}`, while `=` changes the outer `count` because the
+block never held its own. Longer programs live in `examples/`: `scopes.trap` covers nested
+blocks and shadowing, and `control_flow.trap` covers `ong`, `wait`, `nah`, and `spin`. Each
+file lists its expected output at the top.
 
 ## Design rationale
 
@@ -594,6 +604,9 @@ statement's own errors. Blocks count toward the 10,000-level nesting limit.
 cover a binding read after its block ends and `=` that would create a binding; syntax errors
 cover an unclosed block, a stray `}`, recovery inside a block and at keywords, and blocks
 past the limit. `tests/lab2/statements/` covers the `(block ...)` parse output.
+
+`build.sh` and `run` are now stored as executable, and `examples/` holds two runnable
+programs.
 
 ### Lab 5 Week 1 progress
 
