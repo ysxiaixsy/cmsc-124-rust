@@ -94,17 +94,68 @@ impl Parser {
         Ok(Stmt::Hold { name, initializer })
     }
 
-    // statement -> block | printStatement | expressionStatement
+    // statement -> block | ongStatement | spinStatement | printStatement | expressionStatement
     // the leading token is the only thing that distinguishes them, so one token of
     // lookahead picks the branch and no backtracking is needed
     fn statement(&mut self) -> Result<Stmt, ParseError> {
         if self.match_types(&[Tokentypes::LeftBrace]) {
             return self.block();
         }
+        if self.match_types(&[Tokentypes::Ong]) {
+            return self.ong_statement();
+        }
+        if self.match_types(&[Tokentypes::Spin]) {
+            return self.spin_statement();
+        }
         if self.match_types(&[Tokentypes::Spittin]) {
             return self.print_statement();
         }
         self.expression_statement()
+    }
+
+    // ongStatement -> "ong" "(" expression ")" statement
+    //                 ( "wait" "(" expression ")" statement )* ( "nah" statement )?
+    //
+    // `wait` is sugar: each one becomes the else branch of the ong before it, holding another
+    // ong. so the tree only ever has condition / then / else, and the evaluator needs one arm
+    // rather than a chain. that also gives the dangling-else answer for free, because the
+    // innermost unfinished ong is the call that is holding the parser when `nah` turns up
+    fn ong_statement(&mut self) -> Result<Stmt, ParseError> {
+        let condition = self.parenthesized_condition("ong")?;
+        let then_branch = Box::new(self.statement()?);
+
+        let else_branch = if self.match_types(&[Tokentypes::Wait]) {
+            // recursing is what nests the chain: this wait is the else of the ong above it
+            Some(Box::new(self.ong_statement()?))
+        } else if self.match_types(&[Tokentypes::Nah]) {
+            Some(Box::new(self.statement()?))
+        } else {
+            None
+        };
+
+        Ok(Stmt::Ong {
+            condition,
+            then_branch,
+            else_branch,
+        })
+    }
+
+    // spinStatement -> "spin" "(" expression ")" statement
+    fn spin_statement(&mut self) -> Result<Stmt, ParseError> {
+        let condition = self.parenthesized_condition("spin")?;
+        let body = Box::new(self.statement()?);
+        Ok(Stmt::Spin { condition, body })
+    }
+
+    // both control forms wrap their condition in parentheses, so the brackets are demanded once
+    fn parenthesized_condition(&mut self, keyword: &str) -> Result<Expr, ParseError> {
+        self.consume(
+            Tokentypes::LeftParen,
+            &format!("Expect '(' after {keyword}."),
+        )?;
+        let condition = self.expression()?;
+        self.consume(Tokentypes::RightParen, "Expect ')' after condition.")?;
+        Ok(condition)
     }
 
     // block -> "{" declaration* "}"

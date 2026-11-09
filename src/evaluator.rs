@@ -88,6 +88,26 @@ fn execute(
             };
             environment.define(&name.lexeme, value);
         }
+        // only the chosen branch is executed. the other one is never walked, so a runtime
+        // error sitting in it cannot fire
+        Stmt::Ong {
+            condition,
+            then_branch,
+            else_branch,
+        } => {
+            if is_truthy(&evaluate_expression(condition, environment)?) {
+                execute(then_branch, environment, output, emit)?;
+            } else if let Some(branch) = else_branch {
+                execute(branch, environment, output, emit)?;
+            }
+        }
+        // the condition is re-evaluated before every pass, so a body that changes what the
+        // condition reads is what eventually stops the loop
+        Stmt::Spin { condition, body } => {
+            while is_truthy(&evaluate_expression(condition, environment)?) {
+                execute(body, environment, output, emit)?;
+            }
+        }
         Stmt::Block(statements) => {
             // nothing between push and pop can return early, so the enclosing scope comes back
             // even when the block fails. the REPL keeps its environment after a runtime error,

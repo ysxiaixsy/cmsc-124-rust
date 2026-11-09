@@ -13,6 +13,15 @@ pub enum Stmt {
     Hold { name: Token, initializer: Option<Expr> },
     // { ... }: its statements run in a new innermost scope that ends at the closing brace
     Block(Vec<Stmt>),
+    // ong / wait / nah. the branches are statements, so either can be a block or another ong,
+    // which is how `wait` needs no node of its own: the parser folds a chain into nested Ongs
+    Ong {
+        condition: Expr,
+        then_branch: Box<Stmt>,
+        else_branch: Option<Box<Stmt>>,
+    },
+    // spin: re-tests the condition before every pass, so a false condition runs the body zero times
+    Spin { condition: Expr, body: Box<Stmt> },
 }
 
 // the source value a literal node holds

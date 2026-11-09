@@ -30,6 +30,29 @@ fn print_statement(statement: &Stmt) -> String {
             text.push(')');
             text
         }
+        // the else slot is printed only when it exists, so a bare ong reads (ong cond then)
+        Stmt::Ong {
+            condition,
+            then_branch,
+            else_branch,
+        } => {
+            let mut text = format!(
+                "(ong {} {}",
+                print_expression(condition),
+                print_statement(then_branch)
+            );
+            if let Some(branch) = else_branch {
+                text.push(' ');
+                text.push_str(&print_statement(branch));
+            }
+            text.push(')');
+            text
+        }
+        Stmt::Spin { condition, body } => format!(
+            "(spin {} {})",
+            print_expression(condition),
+            print_statement(body)
+        ),
     }
 }
 
