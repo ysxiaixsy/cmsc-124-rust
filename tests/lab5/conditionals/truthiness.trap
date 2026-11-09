@@ -1,0 +1,5 @@
+// conditions use the Lab 3 rule: only cap and nil are falsey
+ong (0) { spittin "zero is truthy"; } // expect: zero is truthy
+ong ("") { spittin "empty string is truthy"; } // expect: empty string is truthy
+ong (nil) { spittin "no"; } nah { spittin "nil is falsey"; } // expect: nil is falsey
+ong (cap) { spittin "no"; } nah { spittin "cap is falsey"; } // expect: cap is falsey

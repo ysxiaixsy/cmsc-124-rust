@@ -160,8 +160,11 @@ Frozen as of Lab 1; changes are recorded in the changelog.
 program             → declaration* EOF
 declaration         → holdDeclaration | statement
 holdDeclaration     → "hold" IDENTIFIER ( "=" expression )? ";"
-statement           → block | printStatement | expressionStatement
+statement           → block | ongStatement | spinStatement | printStatement | expressionStatement
 block               → "{" declaration* "}"
+ongStatement        → "ong" "(" expression ")" statement
+                      ( "wait" "(" expression ")" statement )* ( "nah" statement )?
+spinStatement       → "spin" "(" expression ")" statement
 printStatement      → "spittin" expression ";"
 expressionStatement → expression ";"
 expression → assignment
@@ -175,6 +178,12 @@ primary    → NUM | DEC | STRING | "nocap" | "cap" | "nil" | IDENTIFIER | "(" e
 ```
 
 - Quoted terminals are tokens. `NUM`, `DEC`, and `STRING` are the scanner's integer, decimal, and string tokens. `true` and `false` produce the same tokens as `nocap` and `cap` for now (see known limitations).
+- **Control flow:** `ong` and `spin` take a parenthesized condition and a single statement, which is usually a block. Because the branch is a statement, it nests anywhere a statement can.
+- **`wait` is sugar.** Each `wait` becomes the else branch of the `ong` before it, holding another `ong`, so the tree carries only condition, then, and else. `ong (a) {…} wait (b) {…} nah {…}` prints as `(ong a (block …) (ong b (block …) (block …)))`. Chaining a `nah` onto another `ong` by hand means the same thing.
+- **Dangling else:** a `nah` binds to the nearest unmatched `ong`. That falls out of recursive descent rather than a rule, because the innermost unfinished `ong` call is the one holding the parser when `nah` appears.
+- **Conditions use the truthiness rule from Semantics:** only `cap` and `nil` are falsey, so `ong (0)` and `ong ("")` both take the then branch.
+- **Only the chosen branch is executed.** The other is never walked, so a runtime error sitting in it cannot fire. `tests/lab5/conditionals/only_chosen_branch.trap` is the executable proof.
+- `spin` tests its condition before every pass, so a false condition runs the body zero times. It is the first construct that can loop forever; the harness kills a test file after 15 seconds.
 - The rules go from loosest-binding (`assignment`) to tightest (`primary`), and each rule only calls the one below it. That is what makes `!` bind tighter than `==`: `!nocap == cap` parses as `(== (! nocap) cap)`.
 - The `( ... )*` loops make every binary operator left-associative: `1 != 2 != 3` parses as `(!= (!= 1.0 2.0) 3.0)`.
 - `unary` calls itself, so unary operators chain and group from the right: `!!nocap` parses as `(! (! nocap))`.
@@ -585,3 +594,25 @@ statement's own errors. Blocks count toward the 10,000-level nesting limit.
 cover a binding read after its block ends and `=` that would create a binding; syntax errors
 cover an unclosed block, a stray `}`, recovery inside a block and at keywords, and blocks
 past the limit. `tests/lab2/statements/` covers the `(block ...)` parse output.
+
+### Lab 5 Week 1 progress
+
+Programs can now choose and repeat. `ong` takes a parenthesized condition and a statement,
+with any number of `wait` clauses and an optional `nah`. `spin` takes the same shape and
+re-tests its condition before every pass. Both read truth through the Lab 3 rule, so only
+`cap` and `nil` are falsey.
+
+`wait` needs no node of its own: the parser folds a chain into nested `Ong` nodes, each
+`wait` becoming the else branch of the one before it. The tree therefore carries only a
+condition, a then branch, and an optional else, and the evaluator needs one arm rather than
+a chain. A `nah` binds to the nearest unmatched `ong`, which recursive descent gives for free.
+
+Only the chosen branch is executed, so a runtime error in the untaken branch never fires.
+`spin` runs its body zero times when the condition starts false.
+
+`tests/lab5/conditionals/` covers each branch, a `wait` chain reaching its middle and its
+`nah`, nested conditionals, a missing `nah`, the truthiness rule in a condition, and the
+proof that the untaken branch is never walked. `tests/lab5/repetition/` covers a loop that
+runs three times and one that runs zero times. CI runs Labs 0 through 5.
+
+Logical operators, functions, calls, and results arrive in Week 2.
