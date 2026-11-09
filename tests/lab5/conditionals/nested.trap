@@ -1,0 +1,11 @@
+hold outer = nocap;
+hold inner = cap;
+ong (outer) {
+  ong (inner) {
+    spittin "both";
+  } nah {
+    spittin "outer only"; // expect: outer only
+  }
+} nah {
+  spittin "neither";
+}

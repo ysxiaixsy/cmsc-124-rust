@@ -1,0 +1,4 @@
+// the condition is tested before the first pass, so a false condition runs the body zero times
+hold ran = cap;
+spin (cap) { ran = nocap; }
+spittin ran; // expect: cap

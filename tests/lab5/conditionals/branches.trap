@@ -1,0 +1,5 @@
+ong (nocap) { spittin "then"; } nah { spittin "skipped"; } // expect: then
+ong (cap) { spittin "skipped"; } nah { spittin "else"; } // expect: else
+hold n = 3;
+ong (n > 5) { spittin "big"; } wait (n > 1) { spittin "medium"; } nah { spittin "small"; } // expect: medium
+ong (n > 5) { spittin "big"; } wait (n > 10) { spittin "huge"; } nah { spittin "small"; } // expect: small

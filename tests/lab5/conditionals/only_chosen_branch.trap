@@ -1,0 +1,4 @@
+// the untaken branch holds an expression that would be a runtime error if it ran.
+// this file exits 0, which proves the branch was never walked
+ong (cap) { spittin "a" - 1; } nah { spittin "safe"; } // expect: safe
+ong (nocap) { spittin "safe again"; } nah { spittin nil + 1; } // expect: safe again

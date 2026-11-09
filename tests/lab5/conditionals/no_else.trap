@@ -1,0 +1,3 @@
+ong (nocap) { spittin "taken"; } // expect: taken
+ong (cap) { spittin "not taken"; }
+spittin "after"; // expect: after

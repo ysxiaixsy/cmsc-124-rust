@@ -1,0 +1,8 @@
+hold i = 0;
+spin (i < 3) {
+  spittin i; // expect: 0
+             // expect: 1
+             // expect: 2
+  i = i + 1;
+}
+spittin i; // expect: 3
