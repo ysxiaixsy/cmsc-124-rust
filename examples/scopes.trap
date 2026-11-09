@@ -1,0 +1,43 @@
+// scopes.trap: blocks, shadowing, and assignment through enclosing scopes
+// run with: ./run examples/scopes.trap
+//
+// expected output:
+//   global
+//   shadowed
+//   inner most
+//   shadowed
+//   global
+//   2
+//   3
+
+hold label = "global";
+hold count = 1;
+
+spittin label;
+
+{
+  // a hold inside a block makes a new binding that hides the outer one
+  hold label = "shadowed";
+  spittin label;
+
+  {
+    hold label = "inner" + " most";
+    spittin label;
+  }
+
+  // the innermost block has ended, so its label is gone and this one is visible again
+  spittin label;
+
+  // = does not create a binding: count is not held here, so the outer one changes
+  count = count + 1;
+}
+
+// the block's label was released at its }, and the global one was never touched
+spittin label;
+spittin count;
+
+{
+  // hold x = x reads the outer name before the inner one exists
+  hold count = count + 1;
+  spittin count;
+}

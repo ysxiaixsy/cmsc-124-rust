@@ -1,0 +1,39 @@
+// control_flow.trap: ong / wait / nah conditionals and spin loops
+// run with: ./run examples/control_flow.trap
+//
+// + joins two numbers or two strings, never one of each, so each pass prints n and then
+// its size on separate lines
+//
+// expected output:
+//   1
+//   small
+//   2
+//   small
+//   3
+//   medium
+//   4
+//   medium
+//   5
+//   large
+//   done
+
+hold n = 1;
+
+spin (n <= 5) {
+  spittin n;
+  ong (n < 3) {
+    spittin "small";
+  } wait (n < 5) {
+    spittin "medium";
+  } nah {
+    spittin "large";
+  }
+  n = n + 1;
+}
+
+// spin tests before every pass, so this body never runs
+spin (n < 0) {
+  spittin "unreachable";
+}
+
+spittin "done";
