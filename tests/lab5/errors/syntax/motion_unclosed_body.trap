@@ -1,0 +1,2 @@
+motion f() {
+  spittin 1; // expect error: Error at end: Expect '}' after block.

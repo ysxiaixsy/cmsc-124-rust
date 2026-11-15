@@ -1,0 +1,7 @@
+// scope is static: a motion cannot see the locals of whoever called it
+motion peek() { spittin secret; } // expect runtime error: Undefined variable 'secret'.
+motion caller() {
+  hold secret = "hidden";
+  peek();
+}
+caller();

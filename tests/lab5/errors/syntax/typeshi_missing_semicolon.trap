@@ -1,0 +1,1 @@
+motion f() { typeshi 1 } // expect error: [line 1] Error at '}': Expect ';' after typeshi value.

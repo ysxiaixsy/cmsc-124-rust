@@ -1,0 +1,6 @@
+// a motion that never stops calling itself is stopped with an error, instead of taking the
+// interpreter down with it. output from before the overflow is kept
+spittin "before"; // expect: before
+motion forever(n) { typeshi forever(n + 1); }
+forever(0); // expect runtime error: Stack overflow.
+spittin "not reached";

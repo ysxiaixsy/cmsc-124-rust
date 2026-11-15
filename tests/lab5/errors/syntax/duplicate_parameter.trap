@@ -1,0 +1,2 @@
+// a call binds every parameter in one scope, so the second a would silently replace the first
+motion f(a, b, a) {} // expect error: [line 2] Error at 'a': Duplicate parameter name 'a'.

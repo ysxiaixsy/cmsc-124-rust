@@ -1,0 +1,3 @@
+// a declaration binds its name when it runs, so a call above it finds nothing yet
+later(); // expect runtime error: Undefined variable 'later'.
+motion later() { spittin "not reached"; }

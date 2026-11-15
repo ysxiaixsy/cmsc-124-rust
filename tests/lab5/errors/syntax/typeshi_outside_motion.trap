@@ -1,0 +1,5 @@
+// there is no call for a top-level typeshi to end, so the file is rejected before it runs.
+// a block or a loop is not a motion either
+spittin "not reached";
+typeshi 1; // expect error: [line 4] Error at 'typeshi': Can't use 'typeshi' outside a motion.
+spin (nocap) { typeshi; } // expect error: [line 5] Error at 'typeshi': Can't use 'typeshi' outside a motion.

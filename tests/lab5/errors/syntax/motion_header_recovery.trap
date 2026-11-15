@@ -1,0 +1,5 @@
+// a broken header is reported once. its body is skipped, not parsed as a top-level block,
+// so the typeshi inside is not reported again as being outside a motion. parsing picks up
+// at the next statement, whose own error is still found
+motion broken(a b) { typeshi a; } // expect error: [line 4] Error at 'b': Expect ')' after parameters.
+spittin 1 +; // expect error: [line 5] Error at ';': Expect expression.

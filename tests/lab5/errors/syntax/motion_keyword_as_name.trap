@@ -1,0 +1,1 @@
+motion spin() {} // expect error: [line 1] Error at 'spin': Expect motion name.

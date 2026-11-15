@@ -1,0 +1,7 @@
+// a parameter and a hold inside a motion both end with the call
+motion work(param) {
+  hold local = param;
+  spittin local; // expect: 1
+}
+work(1);
+spittin param; // expect runtime error: Undefined variable 'param'.

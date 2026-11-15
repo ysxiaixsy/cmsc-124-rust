@@ -1,0 +1,5 @@
+// a missing argument is not filled in with nil: the count has to match
+motion add(a, b) { typeshi a + b; }
+spittin add(1, 2); // expect: 3
+spittin add(1); // expect runtime error: Expected 2 arguments but got 1.
+spittin "not reached";

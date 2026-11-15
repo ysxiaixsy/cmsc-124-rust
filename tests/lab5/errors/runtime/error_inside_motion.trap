@@ -1,0 +1,8 @@
+// an error inside a motion stops the whole program, not only the call. it reports the line
+// the error is on, not the line of the call
+motion divide(a, b) {
+  typeshi a / b; // expect runtime error: [line 4] Runtime error: Division by zero.
+}
+spittin divide(10, 2); // expect: 5
+spittin divide(1, 0);
+spittin "not reached";
