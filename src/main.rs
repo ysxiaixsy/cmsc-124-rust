@@ -21,7 +21,8 @@ use tokenizer::tokenizer;
 const USAGE: &str = "Usage:\n  ./run\n  ./run --tokenize\n  ./run --parse\n  ./run <source-file>\n  ./run --tokenize <source-file>\n  ./run --parse <source-file>\n  ./run --eval <source-file>\n  ./run --eval\n  ./run --help";
 
 // The parser and evaluator recurse once per level of nesting, and the default main-thread
-// stack is only 1 MB on Windows. parser::MAX_NESTING is sized to fit inside this.
+// stack is only 1 MB on Windows. parser::MAX_NESTING is sized to fit inside this, and
+// evaluator::CALL_STACK_BYTES is the share of it that calls are allowed to fill.
 const STACK_BYTES: usize = 256 * 1024 * 1024;
 
 #[derive(Clone, Copy)]

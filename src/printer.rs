@@ -20,16 +20,24 @@ fn print_statement(statement: &Stmt) -> String {
             name,
             initializer: None,
         } => format!("(hold {})", name.lexeme),
-        // a whole block stays on its own line, its statements in order: (block (hold x 1.0))
-        Stmt::Block(statements) => {
-            let mut text = String::from("(block");
-            for statement in statements {
-                text.push(' ');
-                text.push_str(&print_statement(statement));
-            }
-            text.push(')');
-            text
+        Stmt::Block(statements) => print_block(statements),
+        // the name, then the parameters in their own parentheses so a motion with none still
+        // shows the slot, then the body: (motion add (a b) (block (typeshi (+ a b))))
+        Stmt::Motion(declaration) => {
+            let params: Vec<&str> = declaration
+                .params
+                .iter()
+                .map(|param| param.lexeme.as_str())
+                .collect();
+            format!(
+                "(motion {} ({}) {})",
+                declaration.name.lexeme,
+                params.join(" "),
+                print_block(&declaration.body)
+            )
         }
+        Stmt::Return(Some(expr)) => format!("(typeshi {})", print_expression(expr)),
+        Stmt::Return(None) => "(typeshi)".to_string(),
         // the else slot is printed only when it exists, so a bare ong reads (ong cond then)
         Stmt::Ong {
             condition,
@@ -54,6 +62,17 @@ fn print_statement(statement: &Stmt) -> String {
             print_statement(body)
         ),
     }
+}
+
+// a whole block stays on its own line, its statements in order: (block (hold x 1.0))
+fn print_block(statements: &[Stmt]) -> String {
+    let mut text = String::from("(block");
+    for statement in statements {
+        text.push(' ');
+        text.push_str(&print_statement(statement));
+    }
+    text.push(')');
+    text
 }
 
 // prints a tree in prefix form, operator first: (== 1.0 (group (! cap))).
@@ -88,6 +107,18 @@ fn print_expression(expr: &Expr) -> String {
                 print_expression(left),
                 print_expression(right)
             )
+        }
+        // the callee first, then the arguments in order: (call add 1.0 2.0), and (call f)
+        Expr::Call {
+            callee, arguments, ..
+        } => {
+            let mut text = format!("(call {}", print_expression(callee));
+            for argument in arguments {
+                text.push(' ');
+                text.push_str(&print_expression(argument));
+            }
+            text.push(')');
+            text
         }
         Expr::Variable(name) => name.lexeme.clone(),
         Expr::Assign { name, value } => {

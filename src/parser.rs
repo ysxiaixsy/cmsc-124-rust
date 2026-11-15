@@ -1,4 +1,6 @@
-use crate::ast::{Expr, Literal, Program, Stmt};
+use std::rc::Rc;
+
+use crate::ast::{Expr, FunctionDecl, Literal, Program, Stmt};
 use crate::tokens::{LiteralValue, Token, Tokentypes};
 
 // the deepest a statement's tree can get, counting each enclosing block and each expression
@@ -22,6 +24,9 @@ pub struct Parser {
     depth: usize,
     // how many blocks enclose the statement being parsed. its expressions start this deep
     block_depth: usize,
+    // how many motion bodies enclose the statement being parsed. zero means top-level code,
+    // where there is no call for a typeshi to end
+    function_depth: usize,
     // every syntax error so far. a block records its own statements' errors here and keeps
     // going, so one mistake inside braces doesn't throw away the rest of the block
     errors: Vec<ParseError>,
@@ -34,6 +39,7 @@ impl Parser {
             current: 0,
             depth: 0,
             block_depth: 0,
+            function_depth: 0,
             errors: Vec::new(),
         }
     }
@@ -71,12 +77,85 @@ impl Parser {
         }
     }
 
-    // declaration -> holdDeclaration | statement
+    // declaration -> motionDeclaration | holdDeclaration | statement
     fn declaration(&mut self) -> Result<Stmt, ParseError> {
+        if self.match_types(&[Tokentypes::Motion]) {
+            return self.motion_declaration();
+        }
         if self.match_types(&[Tokentypes::Hold]) {
             return self.hold_declaration();
         }
         self.statement()
+    }
+
+    // motionDeclaration -> "motion" IDENTIFIER "(" parameters? ")" block
+    // parameters        -> IDENTIFIER ( "," IDENTIFIER )*
+    fn motion_declaration(&mut self) -> Result<Stmt, ParseError> {
+        let (name, params) = match self.motion_header() {
+            Ok(header) => header,
+            Err(error) => {
+                self.skip_motion_body();
+                return Err(error);
+            }
+        };
+
+        // the count comes back down before the error is looked at, so a broken body can't
+        // leave the rest of the file believing it is still inside a motion
+        self.function_depth += 1;
+        let body = self.block_statements();
+        self.function_depth -= 1;
+
+        Ok(Stmt::Motion(Rc::new(FunctionDecl {
+            name,
+            params,
+            body: body?,
+        })))
+    }
+
+    // everything from the name through the `{` that opens the body
+    fn motion_header(&mut self) -> Result<(Token, Vec<Token>), ParseError> {
+        self.consume(Tokentypes::Identifier, "Expect motion name.")?;
+        let name = self.previous().clone();
+
+        self.consume(Tokentypes::LeftParen, "Expect '(' after motion name.")?;
+        let mut params: Vec<Token> = Vec::new();
+        if !self.check(&Tokentypes::RightParen) {
+            loop {
+                self.consume(Tokentypes::Identifier, "Expect parameter name.")?;
+                let param = self.previous().clone();
+                // a call binds every parameter in one scope, so a repeated name would silently
+                // lose the earlier argument. nothing useful can be meant by it
+                if params.iter().any(|earlier| earlier.lexeme == param.lexeme) {
+                    let message = format!("Duplicate parameter name '{}'.", param.lexeme);
+                    return Err(self.error(&param, &message));
+                }
+                params.push(param);
+                if !self.match_types(&[Tokentypes::Comma]) {
+                    break;
+                }
+            }
+        }
+        self.consume(Tokentypes::RightParen, "Expect ')' after parameters.")?;
+
+        self.consume(Tokentypes::LeftBrace, "Expect '{' before motion body.")?;
+        Ok((name, params))
+    }
+
+    // called after a broken header: skip the body that usually still follows it. left where
+    // it is, that body would be parsed as a top-level block, and every typeshi inside it
+    // reported a second time as being outside a motion
+    fn skip_motion_body(&mut self) {
+        while !self.is_at_end()
+            && !matches!(
+                self.peek().token_type,
+                Tokentypes::LeftBrace | Tokentypes::RightBrace | Tokentypes::Semicolon
+            )
+        {
+            self.advance();
+        }
+        if self.match_types(&[Tokentypes::LeftBrace]) {
+            self.skip_to_matching_brace();
+        }
     }
 
     // holdDeclaration -> "hold" IDENTIFIER ( "=" expression )? ";"
@@ -94,7 +173,8 @@ impl Parser {
         Ok(Stmt::Hold { name, initializer })
     }
 
-    // statement -> block | ongStatement | spinStatement | printStatement | expressionStatement
+    // statement -> block | ongStatement | spinStatement | returnStatement | printStatement
+    //            | expressionStatement
     // the leading token is the only thing that distinguishes them, so one token of
     // lookahead picks the branch and no backtracking is needed
     fn statement(&mut self) -> Result<Stmt, ParseError> {
@@ -107,10 +187,32 @@ impl Parser {
         if self.match_types(&[Tokentypes::Spin]) {
             return self.spin_statement();
         }
+        if self.match_types(&[Tokentypes::Typeshi]) {
+            return self.return_statement();
+        }
         if self.match_types(&[Tokentypes::Spittin]) {
             return self.print_statement();
         }
         self.expression_statement()
+    }
+
+    // returnStatement -> "typeshi" expression? ";"
+    // a typeshi with no call to end is rejected here, before anything runs, so the evaluator
+    // never has to decide what one would mean at the top level
+    fn return_statement(&mut self) -> Result<Stmt, ParseError> {
+        let keyword = self.previous().clone();
+        if self.function_depth == 0 {
+            return Err(self.error(&keyword, "Can't use 'typeshi' outside a motion."));
+        }
+
+        let value = if self.check(&Tokentypes::Semicolon) {
+            None
+        } else {
+            Some(self.expression()?)
+        };
+
+        self.consume(Tokentypes::Semicolon, "Expect ';' after typeshi value.")?;
+        Ok(Stmt::Return(value))
     }
 
     // ongStatement -> "ong" "(" expression ")" statement
@@ -162,6 +264,13 @@ impl Parser {
     // a block is a statement, so it nests anywhere a statement can, and its closing brace
     // ends it: no semicolon follows
     fn block(&mut self) -> Result<Stmt, ParseError> {
+        Ok(Stmt::Block(self.block_statements()?))
+    }
+
+    // the declarations between a `{` that was just consumed and its `}`. a motion body is
+    // these same statements without the Block node, so both come through here and a motion
+    // counts toward the nesting limit exactly as a block does
+    fn block_statements(&mut self) -> Result<Vec<Stmt>, ParseError> {
         let brace = self.previous().clone();
         if self.block_depth >= MAX_NESTING {
             let message = format!("Blocks nested too deeply (limit is {MAX_NESTING} levels).");
@@ -182,7 +291,7 @@ impl Parser {
 
         self.block_depth -= 1;
         self.consume(Tokentypes::RightBrace, "Expect '}' after block.")?;
-        Ok(Stmt::Block(statements))
+        Ok(statements)
     }
 
     // printStatement -> "spittin" expression ";"
@@ -344,7 +453,7 @@ impl Parser {
         Ok(expr)
     }
 
-    // unary → ( "!" | "-" ) unary | primary
+    // unary → ( "!" | "-" ) unary | call
     fn unary(&mut self) -> Result<Expr, ParseError> {
         if self.match_types(&[Tokentypes::Not, Tokentypes::Minus]) {
             let operator = self.previous().clone();
@@ -356,7 +465,46 @@ impl Parser {
                 right: Box::new(right),
             });
         }
-        self.primary()
+        self.call()
+    }
+
+    // call      → primary ( "(" arguments? ")" )*
+    // arguments → expression ( "," expression )*
+    // the loop is what lets a call's result be called in turn: f(1)(2)
+    fn call(&mut self) -> Result<Expr, ParseError> {
+        let start = self.depth;
+        let mut expr = self.primary()?;
+
+        while self.match_types(&[Tokentypes::LeftParen]) {
+            let paren = self.previous().clone();
+            // a call node sits one level above its callee and above each argument, so its
+            // depth is one more than the deepest of them. every argument starts back at this
+            // rule's own level, the way a binary operator's right operand does
+            let mut deepest = self.depth + 1;
+            let mut arguments = Vec::new();
+            if !self.check(&Tokentypes::RightParen) {
+                loop {
+                    self.depth = start;
+                    self.nest(&paren)?;
+                    arguments.push(self.expression()?);
+                    deepest = deepest.max(self.depth);
+                    if !self.match_types(&[Tokentypes::Comma]) {
+                        break;
+                    }
+                }
+            }
+            self.depth = deepest;
+            self.check_nesting(&paren)?;
+            self.consume(Tokentypes::RightParen, "Expect ')' after arguments.")?;
+
+            expr = Expr::Call {
+                callee: Box::new(expr),
+                paren,
+                arguments,
+            };
+        }
+
+        Ok(expr)
     }
 
     // primary → NUM | DEC | STRING | "nocap" | "cap" | "nil" | IDENTIFIER | "(" expression ")"
@@ -414,7 +562,8 @@ impl Parser {
         Ok(right)
     }
 
-    // one level deeper, for anything that recurses: a group, a unary operand, or an assignment
+    // one level deeper, for anything that recurses: a group, a unary operand, an assignment,
+    // or a call's argument
     fn nest(&mut self, token: &Token) -> Result<(), ParseError> {
         self.depth += 1;
         self.check_nesting(token)
@@ -477,8 +626,9 @@ impl Parser {
     }
 
     // skip past the failed statement to the next place a statement can begin: just after a
-    // semicolon, or just before a token that starts a statement (`hold`, `spittin`, `{`) or
-    // ends a block (`}`). stopping before `}` is what lets the enclosing block still close.
+    // semicolon, or just before a token that starts a statement (`hold`, `motion`, `typeshi`,
+    // `spittin`, `{`) or ends a block (`}`). stopping before `}` is what lets the enclosing
+    // block still close.
     // a delimiter already consumed by the failed production is also a recovery boundary
     fn synchronize(&mut self, statement_start: usize) {
         // a statement that failed on its very first token must still move past it, or a
@@ -495,6 +645,8 @@ impl Parser {
         while !self.is_at_end() {
             match self.peek().token_type {
                 Tokentypes::Hold
+                | Tokentypes::Motion
+                | Tokentypes::Typeshi
                 | Tokentypes::Spittin
                 | Tokentypes::LeftBrace
                 | Tokentypes::RightBrace => return,
