@@ -1,0 +1,40 @@
+// a motion keeps the scope it was declared in alive, even after the call that made that
+// scope has returned
+motion make_counter() {
+  hold count = 0;
+  motion next() {
+    count = count + 1;
+    typeshi count;
+  }
+  typeshi next;
+}
+hold a = make_counter();
+spittin a(); // expect: 1
+spittin a(); // expect: 2
+// every call of make_counter makes a new scope, so a second counter starts over and the
+// two do not share a count
+hold b = make_counter();
+spittin b(); // expect: 1
+spittin a(); // expect: 3
+spittin a == b; // expect: cap
+// a parameter is captured the same way
+motion adder(amount) {
+  motion add(n) { typeshi n + amount; }
+  typeshi add;
+}
+hold add_five = adder(5);
+spittin add_five(10); // expect: 15
+spittin adder(1)(1); // expect: 2
+// a hold in a spin body is new on every pass, so each motion captures its own. the loop
+// counter is declared outside the body, so there is only one of it and both motions share it
+hold i = 1;
+hold first;
+hold second;
+spin (i <= 2) {
+  hold mine = i * 10;
+  motion get() { typeshi mine + i; }
+  ong (i == 1) { first = get; } nah { second = get; }
+  i = i + 1;
+}
+spittin first(); // expect: 13
+spittin second(); // expect: 23

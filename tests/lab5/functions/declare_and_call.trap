@@ -1,0 +1,17 @@
+// a motion is declared once and runs each time it is called
+motion greet() {
+  spittin "hello";
+}
+greet(); // expect: hello
+greet(); // expect: hello
+// declaring one does not run it
+motion unused() { spittin "never printed"; }
+// a later declaration of the same name replaces the earlier one, the way hold does
+motion pick() { spittin "first"; }
+motion pick() { spittin "second"; }
+pick(); // expect: second
+// the name is an ordinary binding, so a motion can be declared inside a block
+{
+  motion local() { spittin "in a block"; }
+  local(); // expect: in a block
+}

@@ -1,0 +1,32 @@
+// a local starts over on every call: nothing a call did to its own hold is left for the next
+motion tally() {
+  hold count = 0;
+  count = count + 1;
+  typeshi count;
+}
+spittin tally(); // expect: 1
+spittin tally(); // expect: 1
+// state that should last between calls has to live outside the call. here it is the global
+// the motion was declared next to
+hold total = 0;
+motion add_one() {
+  total = total + 1;
+  typeshi total;
+}
+spittin add_one(); // expect: 1
+spittin add_one(); // expect: 2
+// the caller gets its own bindings back when the call ends, even when the callee declared
+// the same name twice and returned early from inside a nested block
+motion early() {
+  hold label = "callee";
+  {
+    hold label = "callee block";
+    ong (nocap) { typeshi label; }
+  }
+}
+motion caller() {
+  hold label = "caller";
+  hold got = early();
+  typeshi label + " after " + got;
+}
+spittin caller(); // expect: caller after callee block

@@ -1,0 +1,24 @@
+// each argument is bound to the parameter in the same position
+motion describe(name, age) {
+  spittin name;
+  spittin age;
+}
+describe("ana", 20); // expect: ana
+                     // expect: 20
+// arguments are evaluated left to right, before the body runs
+hold order = "";
+motion note(tag) { order = order + tag; typeshi tag; }
+motion ignore(a, b, c) { spittin order; }
+ignore(note("a"), note("b"), note("c")); // expect: abc
+// an argument is any expression, and a parameter is a new binding: assigning to it inside
+// the motion leaves the caller's variable alone
+hold n = 1;
+motion bump(n) { n = n + 1; spittin n; }
+bump(n + 10); // expect: 12
+bump(n); // expect: 2
+spittin n; // expect: 1
+// a parameter hides an outer binding of the same name only inside the motion
+hold name = "outer";
+motion show(name) { spittin name; }
+show("argument"); // expect: argument
+spittin name; // expect: outer

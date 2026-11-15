@@ -1,0 +1,26 @@
+// a motion reads names from where it was declared, not from where it was called
+hold x = "global";
+motion show() { spittin x; }
+{
+  hold x = "block";
+  show(); // expect: global
+}
+motion caller() {
+  hold x = "caller";
+  show();
+}
+caller(); // expect: global
+// it reads the binding, not a copy taken at the declaration, so a later change is seen
+x = "changed";
+show(); // expect: changed
+// and it can change that binding
+motion rename() { x = "renamed"; }
+rename();
+spittin x; // expect: renamed
+// a hold inside a motion is local to one call, and gone when the call ends
+motion local() {
+  hold x = "local";
+  spittin x;
+}
+local(); // expect: local
+spittin x; // expect: renamed

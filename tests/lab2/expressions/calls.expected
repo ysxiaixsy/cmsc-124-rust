@@ -1,0 +1,7 @@
+(call f)
+(call add 1.0 2.0)
+(call f (call g x) (+ 1.0 2.0))
+(call (call (call f 1.0) 2.0))
+(* (- (call f x)) 2.0)
+(! (call ready))
+(= x (call f (= y 1.0)))

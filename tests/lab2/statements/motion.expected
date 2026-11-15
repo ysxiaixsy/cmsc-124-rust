@@ -1,0 +1,3 @@
+(motion add (a b) (block (typeshi (+ a b))))
+(motion noop () (block))
+(motion outer () (block (motion inner () (block (typeshi))) (typeshi inner)))
