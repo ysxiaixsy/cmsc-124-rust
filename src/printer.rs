@@ -71,7 +71,13 @@ fn print_expression(expr: &Expr) -> String {
         Expr::Unary { operator, right } => {
             format!("({} {})", operator.lexeme, print_expression(right))
         }
+        // && and || print the way every other two-operand operator does
         Expr::Binary {
+            left,
+            operator,
+            right,
+        }
+        | Expr::Logical {
             left,
             operator,
             right,

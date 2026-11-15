@@ -41,6 +41,8 @@ pub enum Expr {
     Grouping(Box<Expr>),
     Unary { operator: Token, right: Box<Expr> },
     Binary { left: Box<Expr>, operator: Token, right: Box<Expr> },
+    // && and ||. kept apart from Binary because the right operand may never be evaluated
+    Logical { left: Box<Expr>, operator: Token, right: Box<Expr> },
     Variable(Token),
     Assign { name: Token, value: Box<Expr> },
 }

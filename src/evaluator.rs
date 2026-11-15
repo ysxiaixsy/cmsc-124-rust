@@ -152,6 +152,26 @@ fn evaluate_expression(expr: &Expr, environment: &mut Environment) -> Result<Val
                 _ => Err(unsupported_operator(operator)),
             }
         }
+        // the left operand settles the answer whenever it can, and then the right one is
+        // never evaluated: no side effects, no runtime errors. the result is whichever
+        // operand decided, itself, not a boolean made from it
+        Expr::Logical {
+            left,
+            operator,
+            right,
+        } => {
+            let left = evaluate_expression(left, environment)?;
+            let settled = match operator.token_type {
+                Tokentypes::Or => is_truthy(&left),
+                Tokentypes::And => !is_truthy(&left),
+                _ => return Err(unsupported_operator(operator)),
+            };
+            if settled {
+                Ok(left)
+            } else {
+                evaluate_expression(right, environment)
+            }
+        }
         Expr::Binary {
             left,
             operator,
@@ -211,7 +231,7 @@ fn evaluate_expression(expr: &Expr, environment: &mut Environment) -> Result<Val
 }
 
 // only cap and nil are falsey. zero and the empty string are truthy, and writing the rule
-// once is what stops ! and any later conditional from disagreeing about it
+// once is what stops !, the conditionals, and the logical operators from disagreeing about it
 fn is_truthy(value: &Value) -> bool {
     !matches!(value, Value::Boolean(false) | Value::Nil)
 }

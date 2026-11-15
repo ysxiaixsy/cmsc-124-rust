@@ -206,11 +206,11 @@ impl Parser {
         self.assignment()
     }
 
-    // assignment → IDENTIFIER "=" assignment | equality
+    // assignment → IDENTIFIER "=" assignment | logicOr
     // the left side parses as an ordinary expression first: one token of lookahead can't tell
     // `a = 1` from `a + 1`. finding "=" afterwards is what checks that it was a bare name
     fn assignment(&mut self) -> Result<Expr, ParseError> {
-        let expr = self.equality()?;
+        let expr = self.logic_or()?;
 
         if self.match_types(&[Tokentypes::Equal]) {
             let equals = self.previous().clone();
@@ -223,6 +223,43 @@ impl Parser {
                     value: Box::new(value),
                 }),
                 _ => Err(self.error(&equals, "Invalid assignment target.")),
+            };
+        }
+
+        Ok(expr)
+    }
+
+    // logicOr → logicAnd ( "||" logicAnd )*
+    // || sits below && so that a || b && c reads as a || (b && c), the usual reading
+    fn logic_or(&mut self) -> Result<Expr, ParseError> {
+        let start = self.depth;
+        let mut expr = self.logic_and()?;
+
+        while self.match_types(&[Tokentypes::Or]) {
+            let operator = self.previous().clone();
+            let right = self.right_operand(start, &operator, Self::logic_and)?;
+            expr = Expr::Logical {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
+        }
+
+        Ok(expr)
+    }
+
+    // logicAnd → equality ( "&&" equality )*
+    fn logic_and(&mut self) -> Result<Expr, ParseError> {
+        let start = self.depth;
+        let mut expr = self.equality()?;
+
+        while self.match_types(&[Tokentypes::And]) {
+            let operator = self.previous().clone();
+            let right = self.right_operand(start, &operator, Self::equality)?;
+            expr = Expr::Logical {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
             };
         }
 
