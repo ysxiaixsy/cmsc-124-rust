@@ -1,0 +1,23 @@
+// spill is bound before the program starts, as an ordinary global. nothing here calls the
+// native, so this file reads no input
+spittin spill; // expect: <native spill>
+// it is a value like a motion: it binds to another name and equals itself
+hold read = spill;
+spittin read; // expect: <native spill>
+spittin read == spill; // expect: nocap
+// it is not equal to a motion, and it is truthy
+motion fake() {}
+spittin spill == fake; // expect: cap
+spittin !spill; // expect: cap
+// it can be passed as an argument and handed back as a result
+motion same(f) { typeshi f; }
+spittin same(spill); // expect: <native spill>
+// the name is not reserved: a block can shadow it, and the native is back after the block
+{
+  hold spill = "shadowed";
+  spittin spill; // expect: shadowed
+}
+spittin spill; // expect: <native spill>
+// a motion of the same name replaces it, like any redeclaration
+motion spill() { typeshi "replaced"; }
+spittin spill(); // expect: replaced
