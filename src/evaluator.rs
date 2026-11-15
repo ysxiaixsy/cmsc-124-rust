@@ -254,6 +254,13 @@ impl Interpreter<'_> {
                 }
                 match callee {
                     Value::Function(function) => self.call(&function, values, paren),
+                    // a native runs in the host, so there is no scope to make and no body to
+                    // walk. its count is checked first, the same as a motion's
+                    Value::Native(native) => {
+                        check_arity(paren, native.arity, values.len())?;
+                        (native.run)(&values)
+                            .map_err(|message| RuntimeError::new(paren, &message))
+                    }
                     _ => Err(RuntimeError::new(paren, "Can only call motions.")),
                 }
             }
@@ -328,14 +335,7 @@ impl Interpreter<'_> {
         paren: &Token,
     ) -> Result<Value, RuntimeError> {
         let declaration = &function.declaration;
-        if arguments.len() != declaration.params.len() {
-            let message = format!(
-                "Expected {} arguments but got {}.",
-                declaration.params.len(),
-                arguments.len()
-            );
-            return Err(RuntimeError::new(paren, &message));
-        }
+        check_arity(paren, declaration.params.len(), arguments.len())?;
         if self.stack_base.abs_diff(stack_address()) > CALL_STACK_BYTES {
             return Err(RuntimeError::new(paren, "Stack overflow."));
         }
@@ -357,6 +357,15 @@ impl Interpreter<'_> {
 // once is what stops !, the conditionals, and the logical operators from disagreeing about it
 fn is_truthy(value: &Value) -> bool {
     !matches!(value, Value::Boolean(false) | Value::Nil)
+}
+
+// motions and natives both ask here, so a wrong count reads the same whichever was called
+fn check_arity(paren: &Token, expected: usize, got: usize) -> Result<(), RuntimeError> {
+    if expected == got {
+        return Ok(());
+    }
+    let message = format!("Expected {expected} arguments but got {got}.");
+    Err(RuntimeError::new(paren, &message))
 }
 
 // every operator that needs two numbers asks here, so their diagnostics cannot drift apart

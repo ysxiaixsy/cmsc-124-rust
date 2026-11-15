@@ -12,6 +12,32 @@ pub enum Value {
     Nil,
     // shared, so binding a function to a second name copies the reference, not the function
     Function(Rc<Function>),
+    // a function the interpreter supplies, such as spill
+    Native(Native),
+}
+
+// a function written in Rust instead of TrapScript. it is called exactly like a motion and
+// its argument count is checked the same way, so a program cannot tell which kind it has
+// except by printing it
+#[derive(Clone, Copy)]
+pub struct Native {
+    pub name: &'static str,
+    pub arity: usize,
+    // a failure comes back as a message; the evaluator adds the line of the call
+    pub run: fn(&[Value]) -> Result<Value, String>,
+}
+
+// every native has its own name, so the name is its identity
+impl PartialEq for Native {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+impl fmt::Debug for Native {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<native {}>", self.name)
+    }
 }
 
 // what running a `motion` declaration produces: the declaration, plus the scope it ran in.
@@ -47,6 +73,7 @@ impl fmt::Display for Value {
             Value::Boolean(false) => write!(f, "cap"),
             Value::Nil => write!(f, "nil"),
             Value::Function(function) => write!(f, "{function:?}"),
+            Value::Native(native) => write!(f, "{native:?}"),
         }
     }
 }

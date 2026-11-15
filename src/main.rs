@@ -1,6 +1,7 @@
 mod ast;
 mod environment;
 mod evaluator;
+mod natives;
 mod parser;
 mod printer;
 mod tokenizer;
@@ -74,7 +75,7 @@ fn run_cli() -> ExitCode {
 
     if let Some(path) = path {
         match fs::read_to_string(&path) {
-            Ok(source) => ExitCode::from(run_source(stage, source, &Environment::new())),
+            Ok(source) => ExitCode::from(run_source(stage, source, &natives::globals())),
             Err(error) => {
                 eprintln!(
                     "Error: Failed to read '{}': {error}",
@@ -150,7 +151,7 @@ fn run_source(stage: Stage, source: String, environment: &Environment) -> u8 {
 
 fn repl(stage: Stage) {
     // One environment for the whole session: a runtime error ends a line, not its variables.
-    let environment = Environment::new();
+    let environment = natives::globals();
     loop {
         print!("> ");
         if let Err(error) = io::stdout().flush() {
