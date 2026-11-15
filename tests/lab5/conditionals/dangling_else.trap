@@ -1,0 +1,10 @@
+// a nah belongs to the nearest ong that does not have one yet. there are no braces here, so
+// the indentation is the only hint, and it deliberately points at the wrong ong
+ong (nocap)
+  ong (cap) spittin "inner then";
+nah spittin "inner nah"; // expect: inner nah
+// if the nah belonged to the outer ong, this one would print "outer nah". it prints nothing
+ong (cap)
+  ong (nocap) spittin "unreachable";
+nah spittin "outer nah";
+spittin "after"; // expect: after

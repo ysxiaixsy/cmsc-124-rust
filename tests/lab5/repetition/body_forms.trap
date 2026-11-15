@@ -1,0 +1,13 @@
+// the body is any one statement, so the braces are optional
+hold i = 0;
+spin (i < 3) i = i + 1;
+spittin i; // expect: 3
+// a hold in the body is made new on every pass, so nothing carries over from the last one
+hold pass = 0;
+spin (pass < 2) {
+  hold fresh;
+  spittin fresh; // expect: nil
+                 // expect: nil
+  fresh = "set";
+  pass = pass + 1;
+}
