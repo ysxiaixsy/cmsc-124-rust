@@ -65,18 +65,23 @@ Exit codes: `0` when the file is accepted, `65` when it is rejected before runni
 | Operator | Category | Operands | Associativity | Precedence |
 |---|---|---|---|---|
 | `=` | assignment | binary | right | 1 |
-| `==` | equality | binary | left | 2 |
-| `!=` | equality | binary | left | 2 |
-| `<` | comparison | binary | left | 3 |
-| `<=` | comparison | binary | left | 3 |
-| `>` | comparison | binary | left | 3 |
-| `>=` | comparison | binary | left | 3 |
-| `+` | arithmetic | binary | left | 4 |
-| `-` | arithmetic | binary | left | 4 |
-| `*` | arithmetic | binary | left | 5 |
-| `/` | arithmetic | binary | left | 5 |
-| `!` | logical | unary | right | 6 |
-| `-` | arithmetic | unary | right | 6 |
+| `\|\|` | logical | binary | left | 2 |
+| `&&` | logical | binary | left | 3 |
+| `==` | equality | binary | left | 4 |
+| `!=` | equality | binary | left | 4 |
+| `<` | comparison | binary | left | 5 |
+| `<=` | comparison | binary | left | 5 |
+| `>` | comparison | binary | left | 5 |
+| `>=` | comparison | binary | left | 5 |
+| `+` | arithmetic | binary | left | 6 |
+| `-` | arithmetic | binary | left | 6 |
+| `*` | arithmetic | binary | left | 7 |
+| `/` | arithmetic | binary | left | 7 |
+| `!` | logical | unary | right | 8 |
+| `-` | arithmetic | unary | right | 8 |
+| `( )` | call | a callee and any number of arguments | left | 9 |
+
+A higher number binds tighter. `&&` and `||` exist only doubled: a lone `&` or `|` is an unexpected character.
 
 ### Punctuation
 
@@ -158,22 +163,30 @@ Frozen as of Lab 1; changes are recorded in the changelog.
 
 ```
 program             → declaration* EOF
-declaration         → holdDeclaration | statement
+declaration         → motionDeclaration | holdDeclaration | statement
+motionDeclaration   → "motion" IDENTIFIER "(" parameters? ")" block
+parameters          → IDENTIFIER ( "," IDENTIFIER )*
 holdDeclaration     → "hold" IDENTIFIER ( "=" expression )? ";"
-statement           → block | ongStatement | spinStatement | printStatement | expressionStatement
+statement           → block | ongStatement | spinStatement | returnStatement | printStatement
+                    | expressionStatement
 block               → "{" declaration* "}"
 ongStatement        → "ong" "(" expression ")" statement
                       ( "wait" "(" expression ")" statement )* ( "nah" statement )?
 spinStatement       → "spin" "(" expression ")" statement
+returnStatement     → "typeshi" expression? ";"
 printStatement      → "spittin" expression ";"
 expressionStatement → expression ";"
 expression → assignment
-assignment → IDENTIFIER "=" assignment | equality
+assignment → IDENTIFIER "=" assignment | logicOr
+logicOr    → logicAnd ( "||" logicAnd )*
+logicAnd   → equality ( "&&" equality )*
 equality   → comparison ( ( "!=" | "==" ) comparison )*
 comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term       → factor ( ( "-" | "+" ) factor )*
 factor     → unary ( ( "/" | "*" ) unary )*
-unary      → ( "!" | "-" ) unary | primary
+unary      → ( "!" | "-" ) unary | call
+call       → primary ( "(" arguments? ")" )*
+arguments  → expression ( "," expression )*
 primary    → NUM | DEC | STRING | "nocap" | "cap" | "nil" | IDENTIFIER | "(" expression ")"
 ```
 
@@ -184,6 +197,10 @@ primary    → NUM | DEC | STRING | "nocap" | "cap" | "nil" | IDENTIFIER | "(" e
 - **Conditions use the truthiness rule from Semantics:** only `cap` and `nil` are falsey, so `ong (0)` and `ong ("")` both take the then branch.
 - **Only the chosen branch is executed.** The other is never walked, so a runtime error sitting in it cannot fire. `tests/lab5/conditionals/only_chosen_branch.trap` is the executable proof.
 - `spin` tests its condition before every pass, so a false condition runs the body zero times. It is the first construct that can loop forever; the harness kills a test file after 15 seconds.
+- **Logical operators:** `||` and `&&` sit between assignment and equality, with `&&` the tighter of the two, so `a || b && c` parses as `(|| a (&& b c))` and `x = a || b` stores the whole expression. Both group from the left. They get a tree node of their own, `Logical`, because the evaluator may skip the right operand, which it never does for a `Binary`.
+- **Functions:** `motion` is a declaration like `hold`, so it is legal wherever a statement is, including inside a block or another motion. The body must be a block. Parameter names must be identifiers and must differ from each other: `motion f(a, a) {}` is a syntax error.
+- **Calls:** a call is a postfix on any primary, and the rule loops, so a call's result can be called in turn: `f(1)(2)`. Calls bind tighter than unary operators, so `-f(x)` negates the result. An argument is any expression, including an assignment. A call is not an assignment target: `f() = 1;` is rejected with exit `65`.
+- **`typeshi`** takes an optional expression and is only legal inside a motion body. Anywhere else, including a block or a loop at the top level, is a syntax error, so the file is rejected before it runs.
 - The rules go from loosest-binding (`assignment`) to tightest (`primary`), and each rule only calls the one below it. That is what makes `!` bind tighter than `==`: `!nocap == cap` parses as `(== (! nocap) cap)`.
 - The `( ... )*` loops make every binary operator left-associative: `1 != 2 != 3` parses as `(!= (!= 1.0 2.0) 3.0)`.
 - `unary` calls itself, so unary operators chain and group from the right: `!!nocap` parses as `(! (! nocap))`.
@@ -191,7 +208,7 @@ primary    → NUM | DEC | STRING | "nocap" | "cap" | "nil" | IDENTIFIER | "(" e
 - **Where bindings are legal:** `hold` is a declaration, so it can begin a statement but cannot appear inside an expression: `spittin hold x = 1;` is a syntax error. The initializer is optional, and the name must be an identifier, so a keyword cannot be declared.
 - **Assignment** is an expression, legal anywhere an expression is, and it produces the assigned value: `spittin x = 2;` prints `2`, and `hold y = (x = 3);` binds both. `assignment` calls itself on the right, so `a = b = 1` groups as `a = (b = 1)`.
 - **Assignment targets:** the parser reads the left side as an ordinary expression, then checks that it is a bare name when it finds `=`. `1 = 2;`, `(a) = 2;`, `-a = 2;`, and `a + b = 3;` are all rejected before anything runs, with exit `65`.
-- **Nesting limit:** an expression's tree can be at most 10,000 levels deep. A group, a unary operator, an assignment, and each binary operator add a level, so `1 + 1 + 1` is two levels deep because `+` groups from the left, and `(a) + (b)` counts only its deeper side plus one. Each enclosing block also adds a level, so blocks can nest at most 10,000 deep, and a statement's expression starts counting from the depth of the blocks around it. Each top-level statement starts again from zero. Past the limit is a syntax error with exit `65`. The parser, evaluator, and printer all recurse once per level, so the interpreter runs on a 256 MB stack, and the limit keeps every expression well inside it instead of letting the host stack overflow and abort the process.
+- **Nesting limit:** an expression's tree can be at most 10,000 levels deep. A group, a unary operator, an assignment, a call, and each binary or logical operator add a level, so `1 + 1 + 1` is two levels deep because `+` groups from the left, and `(a) + (b)` counts only its deeper side plus one. A call counts one more than the deepest of its callee and its arguments, so `f(g(1))` and `f()()` are both two levels deep. Each enclosing block also adds a level, and a motion body is a block, so blocks can nest at most 10,000 deep, and a statement's expression starts counting from the depth of the blocks around it. Each top-level statement starts again from zero. Past the limit is a syntax error with exit `65`. The parser, evaluator, and printer all recurse once per level, so the interpreter runs on a 256 MB stack, and the limit keeps every expression well inside it instead of letting the host stack overflow and abort the process.
 - **Program structure:** the parser returns one `Program` root containing an ordered list of statement children. Each child contains the existing expression tree. The parser consumes the complete file through EOF; it does not return independent expression roots. Newlines are whitespace, so `1 +` followed by `2;` continues one expression, and a leading `-` on a later line can continue the preceding expression when no semicolon intervenes. A multiline string remains one literal node.
 - `nil` is a literal, introduced in Lab 3. Its token has type `Nil` and no payload; its AST node is `Literal::Nil`.
 - **Statements:** `spittin` was reserved as the output keyword from Lab 1 and is wired up in Lab 4. One token of lookahead picks the branch, so `statement` needs no backtracking. A print statement is a statement, not an expression: `spittin` cannot appear inside an expression, and `spittin spittin 1;` is a syntax error.
@@ -212,6 +229,9 @@ That is the output for `(1 == 2) != !cap`.
 - Statements with a keyword lead with it: `(spittin 1.0)`, `(hold x 1.0)`, and `(hold x)` when there is no initializer.
 - Names print bare, and assignment prints as an operator: `(= x (+ x 1.0))`.
 - A block prints on one line with its statements in order: `{ hold x = 1; spittin x; }` prints as `(block (hold x 1.0) (spittin x))`, and `{}` prints as `(block)`.
+- A motion prints its name, its parameters in their own parentheses, and its body as a block: `motion add(a, b) { typeshi a + b; }` prints as `(motion add (a b) (block (typeshi (+ a b))))`. With no parameters the slot stays, as `()`. A bare `typeshi;` prints as `(typeshi)`.
+- A call prints its callee and then its arguments: `add(1, 2)` prints as `(call add 1.0 2.0)`, `f()` as `(call f)`, and `f(1)(2)` as `(call (call f 1.0) 2.0)`.
+- `&&` and `||` print the way the other two-operand operators do: `(|| a (&& b c))`.
 - Groupings print as: `(group ...)`
 - Numbers print as: always with a decimal point, so `5` prints as `5.0` and `3.14` as `3.14`
 - Strings print in double quotes with control characters and backslashes escaped: a string containing a newline prints as `"first\nsecond"` on one output line, and a literal backslash prints as `\\`
@@ -222,10 +242,14 @@ That is the output for `(1 == 2) != !cap`.
 ### Values and types
 
 Runtime values use a Rust tagged union, `Value`, with `Number(f64)`,
-`String(String)`, `Boolean(bool)`, and `Nil` variants. One return type can hold
+`String(String)`, `Boolean(bool)`, `Nil`, `Function`, and `Native` variants. One return type can hold
 any TrapScript value; matching a variant checks its type and extracts its data.
 This fits Rust's exhaustive pattern matching and the scanner's existing `f64`
 representation without downcasting or adding a second numeric type.
+
+A function value is a shared reference to the `motion` declaration plus the scope
+that declaration ran in. Binding it to a second name copies the reference, so both
+names call the same function.
 
 AST `Literal` describes source syntax; `Value` also represents computed results.
 The evaluator converts literals to values and recursively evaluates child nodes
@@ -247,11 +271,12 @@ Operators that need numbers share one check, so they report the same diagnostic.
 - Nil: `nil`.
 - Strings: contents without quotes, preserving spaces and line breaks.
 - Booleans: `nocap` and `cap`.
+- Functions: `<motion name>`, with the name from the declaration even when the value is bound to another name. A native function prints as `<native name>`.
 - Parse output keeps its existing debug representation, including `5.0` and quoted strings.
 
 ### Truthiness
 
-Only `cap` and `nil` are falsey; all other values, including zero and the empty string, are truthy. The rule lives in one function, so `!` and every later conditional answer the same way. `!` takes any value and never reports a type error. `tests/lab3/values/truthiness.trap` is the executable statement of this rule.
+Only `cap` and `nil` are falsey; all other values, including zero, the empty string, and every function, are truthy. The rule lives in one function, so `!`, the conditionals, and the logical operators all answer the same way. `!` takes any value and never reports a type error. `tests/lab3/values/truthiness.trap` is the executable statement of this rule.
 
 ### Operator semantics
 
@@ -260,7 +285,9 @@ Only `cap` and `nil` are falsey; all other values, including zero and the empty 
 - Mixed types: runtime error; no implicit coercion.
 - Comparison: numbers only, on both sides; anything else is a runtime error. Returns a boolean.
 - Equality across types: any pair of values, comparing the type first, so `1 == "1"` is `cap` rather than an error. `nil` equals only `nil`, so `nil == cap` is `cap` even though both are falsey.
+- Equality of functions: by identity. A function equals itself under any name it is bound to. Two declarations with the same text are different functions, and so are the two functions made by running one declaration twice.
 - Division by zero: runtime error, including negative zero.
+- `||` and `&&`: any operands, never a type error. `||` evaluates its left operand and produces it if it is truthy; otherwise it evaluates and produces its right operand. `&&` produces its left operand if that is falsey, and otherwise its right. See Control flow and functions.
 
 ### Scope and bindings
 
@@ -270,29 +297,64 @@ Only `cap` and `nil` are falsey; all other values, including zero and the empty 
 - Redeclaration in the same scope: allowed. A later `hold` replaces the earlier binding, which keeps retyping a line at the REPL painless. The initializer runs first, so `hold x = x + 1;` reads the old `x`, and `hold x;` resets it to `nil`.
 - Uninitialized variable holds: `nil`.
 - Visibility: a binding becomes visible once its `hold` finishes, so a first declaration cannot read itself in its own initializer.
-- Scope: static (lexical). The program starts in one global environment, and each block runs in a new environment whose enclosing environment is the one the block sits in. A read or an assignment searches the innermost environment first, then each enclosing one out to global, and stops at the first binding of that name; if none has it, the name is undefined. The search follows how the source nests, never the order of calls, so when functions arrive in Lab 5 a function will look up names from where it was defined, not from where it was called.
+- Scope: static (lexical). The program starts in one global environment, and each block runs in a new environment whose enclosing environment is the one the block sits in. A read or an assignment searches the innermost environment first, then each enclosing one out to global, and stops at the first binding of that name; if none has it, the name is undefined. The search follows how the source nests, never the order of calls, so a function looks up names from where it was declared, not from where it was called. A call runs in a new environment whose enclosing environment is the one the `motion` declaration ran in.
+- Why static: what a name in a function body means can be read off the source around the declaration, and no caller can change it by happening to have a local of the same name. The cost is that a function cannot pick up a value from whoever called it; anything it needs from the caller has to be passed as an argument. Dynamic scope would allow that implicit passing, but every nonlocal name would then depend on the chain of active calls. `tests/lab5/functions/static_scope.trap` is the distinguishing test: a caller and the declaration site bind the same name differently, and the function prints the declaration site's. `tests/lab5/errors/runtime/no_dynamic_scope.trap` shows the other half, a caller's local that the function cannot see at all.
 - Shadowing: a `hold` inside a block always creates a new binding in that block, even when an enclosing environment already has the name. The inner binding hides the outer one until the block ends; the outer one stays alive and unchanged, and is visible again after the `}`. Assigning with `=` inside the block changes whichever binding the search finds first, so it changes the outer binding only when the block has not shadowed it.
 - Shadowing an outer name with itself: inside a block, `hold x = x;` reads the outer `x` and then creates the inner one, because the initializer runs before the name is bound. This follows the same rule as `hold x = x + 1;` at one level, so there is no special case and no separate resolution pass. `hold y = y;` still fails when no environment has a `y`.
 - Binding time: a name binds to storage and to its first value when `hold` executes, and to a new value at each assignment. Its type is never declared; it follows whichever value it currently holds.
 - Scope against lifetime: a block's binding can be named from its `hold` to the block's `}`. Its storage exists while that block is running and is released when the block exits, so reading it after the `}` is `Undefined variable`. A shadowed binding shows the difference: it is alive inside the inner block but cannot be named there.
-- Storage lifetime: a global binding lasts from the moment `hold` executes until the program ends, or until the session ends in the REPL, so it is static storage in the sense of lasting for the program. A block's bindings are stack-dynamic: created when their `hold` runs and released when the block exits, including when it exits through a runtime error. The Rust `HashMap` behind each environment is an implementation detail, not a promise of heap-dynamic storage.
+- Storage lifetime: a global binding lasts from the moment `hold` executes until the program ends, or until the session ends in the REPL, so it is static storage in the sense of lasting for the program. A block's bindings are stack-dynamic: created when their `hold` runs and released when the block exits, including when it exits through a runtime error. A call's parameters and locals behave the same way and are released when the call returns. The one exception is a scope that a function was declared in: the function keeps that scope, so its bindings live for as long as the function can still be called, which is what makes closures work. Environments are reference-counted to allow this.
 - Values are copied on binding: after `hold b = a;`, assigning to `a` leaves `b` unchanged.
-- Undefined name: runtime error with exit 70 and `Undefined variable 'a'.`, for both reading and assigning. The check happens when the name is evaluated, so code that never runs never reports, and Lab 5's mutually recursive functions need no separate resolution pass. The right side of an assignment runs first, so `z = 1 / 0;` reports the division by zero even if `z` is undefined.
+- Undefined name: runtime error with exit 70 and `Undefined variable 'a'.`, for both reading and assigning. The check happens when the name is evaluated, so code that never runs never reports, and mutually recursive functions need no separate resolution pass: a body can mention a function declared further down, as long as that declaration has run by the time of the call. The right side of an assignment runs first, so `z = 1 / 0;` reports the division by zero even if `z` is undefined.
 
 ### Control flow and functions
 
-- Logical operators return: [booleans, or the operand]
-- Dangling else binds to: [which if]
-- Closure capture of a loop variable: [per iteration, or shared]
-- Function with no return statement produces: [value]
-- Arity mismatch: [message and exit code]
+- Logical operators return: the operand that settled the answer, not a boolean. `nil || "guest"` is `guest`, `0 || 1` is `0` because zero is truthy, and `cap && 1` is `cap`.
+- Short-circuiting: the right operand is evaluated only when the left one does not settle the answer. When it is skipped, its side effects do not happen and its runtime errors do not fire: `nocap || 1 / 0` is `nocap`.
+- Dangling else binds to: the nearest unmatched `ong`. `tests/lab5/conditionals/dangling_else.trap` runs both unbraced cases where the two readings differ.
+- Locals across calls: every call gets a new environment, so a `hold` in a body starts over on each call. State that should persist lives outside the call, in a global or in a captured scope. `tests/lab5/functions/fresh_locals.trap` shows both, and that a caller's bindings are intact after the callee returns early.
+- Declaring a function: `motion name(params) { ... }` binds `name` in the innermost environment, exactly as `hold` would, to a new function value. It can sit inside a block or another function, and a later declaration of the same name in the same scope replaces the earlier one. Nothing in the body runs until a call.
+- Functions are values: a function can be printed, bound to another name, passed as an argument, and returned as a result.
+- Calling: the callee is evaluated, then each argument from left to right, then the callee is checked. Each argument is bound to the parameter in its position, in a new environment that the body's statements also run in, so a parameter and a `hold` in the body share one scope. Arguments are passed by value for numbers, strings, booleans, and `nil`, and by reference for functions.
+- `typeshi` ends the call it runs in and gives the call its value, from however many blocks, `ong`s, and `spin`s it sits inside. A `typeshi;` with no expression gives `nil`.
+- Function with no return statement produces: `nil`.
+- Recursion: a function can call itself, and two functions can call each other, because a name is looked up when the call runs.
+- Closures: a function keeps the environment it was declared in, and reads and assigns the live bindings there, not copies. A function returned from a call keeps that call's parameters and locals alive, and each call makes a separate set.
+- Closure capture of a loop variable: `spin` has no loop variable of its own. A `hold` inside the loop body is new on every pass, so a function declared in the body captures that pass's binding. A counter declared outside the loop is one binding, shared by every pass and every function that reads it.
+- Arity mismatch: runtime error `Expected 2 arguments but got 1.`, exit `70`. The body does not start. A missing argument is not filled with `nil` and a spare one is not dropped.
+- Calling something that is not a function: runtime error `Can only call motions.`, exit `70`.
+- Call depth: calls run on the interpreter's own 256 MB stack. A call is refused with the runtime error `Stack overflow.`, exit `70`, once three quarters of that stack is in use, so unbounded recursion ends in a diagnostic instead of crashing the process. The limit is measured in stack, not in calls, so the depth it allows depends on how deeply each call nests and on the build: a minimal recursive function gets about 200,000 calls deep in the release build, and `tests/lab5/functions/recursion.trap` holds every build to at least 10,000.
+- An error inside a function reports the line it happened on, not the line of the call, and stops the whole program. A failed call reports the line of its `(`.
 
 ## Native functions
 
 
 | Name | Arguments | Returns | Notes |
 |---|---|---|---|
-| [name] | [count and types] | [type] | [caveats] |
+| `spill` | none | a string, or `nil` | Reads the next line of standard input and returns it without its line ending (`\n` or `\r\n`). Nothing else is trimmed, so an empty line is `""`. Returns `nil` once the input has run out. The result is always a string, even when the line spells a number. Input that is not valid UTF-8 is a runtime error, exit `70`. |
+| `digits` | one string, or `nil` | a number, or `nil` | Returns the number the string spells, or `nil` when it does not spell one. The spelling is the one number literals use (`42`, `3.14`, `1.`), with spaces around it ignored and a leading `-` allowed. So `.5`, `1e3`, `+5`, `1.2.3`, `12abc`, `inf`, and `""` are all `nil`. `digits(nil)` is `nil`, so `digits(spill())` is `nil` at the end of the input. Any other argument (a number, a boolean, a function) is the runtime error `Argument to digits must be a string.`, exit `70`. |
+
+```
+hold total = 0;
+hold line;
+spin (line = spill()) {
+  hold n = digits(line);
+  ong (n == nil) { spittin "skipped: " + line; } nah { total = total + n; }
+}
+spittin total;
+```
+
+Run as `./run sum.trap < numbers.txt`, this adds up the lines that are numbers and names the
+ones that are not. The loop ends at the end of the input because `nil` is falsey, and it does
+not end at a blank line because the empty string is truthy. When the text itself is not
+needed, the two calls chain: `digits(spill())` is the next line as a number, and `nil` both
+for a line that is not a number and at the end of the input.
+
+- A native is implemented in Rust and bound in the global environment before any user code runs. It is called exactly like a motion, and its argument count is checked the same way and before it runs, so `spill(1)` reports `Expected 0 arguments but got 1.` without reading anything.
+- A native is a value: it prints as `<native spill>`, can be bound to another name or passed as an argument, is truthy, and equals only itself.
+- `digits` answers `nil` for a string that is not a number so that a program can check its input, and `nil` is the only falsey thing it returns: `digits("0")` is `0`, which is truthy, so `digits(text) || 10` supplies a default without swallowing a zero.
+- The names are not reserved. A program can shadow `spill` in a block or replace it with a `hold` or a `motion` of the same name.
+- In the REPL, `spill` reads from the same input as the prompt, so it takes the next line typed.
 
 
 ## Errors and diagnostics
@@ -314,16 +376,29 @@ Syntax errors from `--parse` name the line and the token where parsing failed, o
 [line 128] Error at '(': Expression nested too deeply (limit is 10000 levels).
 [line 4] Error at end: Expect '}' after block.
 [line 1] Error at '{': Blocks nested too deeply (limit is 10000 levels).
+[line 2] Error at 'a': Duplicate parameter name 'a'.
+[line 1] Error at ';': Expect ')' after arguments.
+[line 4] Error at 'typeshi': Can't use 'typeshi' outside a motion.
 ```
 
-The parser reports syntax errors with the token line and continues recovery at a statement boundary, or EOF, while ensuring it makes progress. A statement boundary is just after a semicolon, or just before a token that starts a statement (`hold`, `spittin`, `{`) or ends a block (`}`). Stopping before `}` means an error inside a block is recorded and the block still parses to its own closing brace, so one mistake does not turn the rest of the block, or its `}`, into further errors. A `}` with no open block is reported once and skipped. A block nested past the limit is reported once and skipped through its matching `}`. A missing semicolon, including after the last expression at EOF, is a syntax error. A missing operand is reported at the token or EOF where parsing fails. The parser publishes no program if any syntax errors occurred. Like `--tokenize`, a rejected file prints nothing to stdout and exits `65`.
+Runtime errors name the line and stop the program:
+
+```
+[line 3] Runtime error: Expected 2 arguments but got 1.
+[line 4] Runtime error: Can only call motions.
+[line 5] Runtime error: Stack overflow.
+```
+
+The parser reports syntax errors with the token line and continues recovery at a statement boundary, or EOF, while ensuring it makes progress. A statement boundary is just after a semicolon, or just before a token that starts a statement (`hold`, `motion`, `typeshi`, `spittin`, `{`) or ends a block (`}`). Stopping before `}` means an error inside a block is recorded and the block still parses to its own closing brace, so one mistake does not turn the rest of the block, or its `}`, into further errors. A `}` with no open block is reported once and skipped. A block nested past the limit is reported once and skipped through its matching `}`. A motion whose header is malformed is reported once and its body is skipped through its matching `}`: parsed as a top-level block instead, every `typeshi` inside it would be reported again as being outside a motion. A missing semicolon, including after the last expression at EOF, is a syntax error. A missing operand is reported at the token or EOF where parsing fails. The parser publishes no program if any syntax errors occurred. Like `--tokenize`, a rejected file prints nothing to stdout and exits `65`.
 
 
 | Failure | Exit code |
 |---|---|
-| lexical error: unexpected character or unterminated string | 65 |
-| syntax error: a missing `)`, a missing operand, a token that can't start an expression, a malformed `hold`, an invalid assignment target, an unclosed block or a stray `}`, or an expression or block nested past the limit | 65 |
+| lexical error: unexpected character (including a lone `&` or `\|`) or unterminated string | 65 |
+| syntax error: a missing `)`, a missing operand, a token that can't start an expression, a malformed `hold` or `motion`, a duplicate parameter name, a `typeshi` outside a motion, an invalid assignment target, an unclosed block or a stray `}`, or an expression or block nested past the limit | 65 |
 | runtime type error, division by zero, or an undefined variable | 70 |
+| a call with the wrong number of arguments, a call of something that is not a function, or calls nested past the stack limit | 70 |
+| `spill` failing to read standard input, such as input that is not valid UTF-8, or `digits` given something that is neither a string nor `nil` | 70 |
 
 
 ## Testing conventions
@@ -514,9 +589,38 @@ global
 ```
 
 The inner `hold` shadows `label` until the `}`, while `=` changes the outer `count` because the
-block never held its own. Longer programs live in `examples/`: `scopes.trap` covers nested
-blocks and shadowing, and `control_flow.trap` covers `ong`, `wait`, `nah`, and `spin`. Each
-file lists its expected output at the top.
+block never held its own.
+
+```
+motion make_counter() {
+  hold count = 0;
+  motion next() {
+    count = count + 1;
+    typeshi count;
+  }
+  typeshi next;
+}
+hold tick = make_counter();
+spittin tick();
+spittin tick() > 1 && "counting";
+spittin nil || "guest";
+```
+
+Output from `./run <file>`:
+
+```
+1
+counting
+guest
+```
+
+`next` keeps `count` alive after `make_counter` returns, and `&&` and `||` hand back one of
+their operands rather than a boolean.
+
+Longer programs live in `examples/`: `scopes.trap` covers nested blocks and shadowing,
+`control_flow.trap` covers `ong`, `wait`, `nah`, and `spin`, and `functions.trap` covers
+`motion`, `typeshi`, recursion, closures, and the logical operators. Each file lists its
+expected output at the top.
 
 ## Design rationale
 
@@ -528,8 +632,13 @@ guess `var`, but this tradeoff is worth it because personality creates identity.
 
 - `true` and `false` still scan as booleans alongside `nocap` and `cap`.
 - The REPL handles each submitted line as a complete program (evaluating by default, scanning with `--tokenize`, parsing with `--parse`), so line numbers restart at 1 on every line. Parse and evaluation input requires a semicolon after every expression statement. An unfinished expression or missing semicolon reports an error and returns to the prompt; the REPL does not buffer multiple lines into one program. A string cannot continue onto the next REPL input line: a multiline string that works in a file is an unterminated-string error in the REPL.
-- `locked` is reserved but has no grammar yet, so `locked x = 1;` is "Expect expression".
-- Parser recovery stops at semicolons and before `hold`, `spittin`, `{`, and `}`. A missing semicolon before a statement that begins with an expression still hides any error in that statement, because nothing marks where it starts.
+- `locked` and `pause` are reserved but have no grammar yet, so `locked x = 1;` and `pause;` are "Expect expression". A `spin` can only end through its condition, or through a `typeshi` when it is inside a motion.
+- There are two native functions, `spill` and `digits`. Nothing converts the other way, from a number to a string, so a number cannot be joined onto a string with `+`.
+- The test harness does not supply standard input: a test's interpreter inherits whatever the harness was started with, which is a terminal when run by hand. A test that called `spill` would wait for typing and time out, so the tests cover everything about `spill` except the read itself, which was checked by piping input in.
+- There are no anonymous functions: every user function comes from a `motion` declaration.
+- Parser recovery stops at semicolons and before `hold`, `motion`, `typeshi`, `spittin`, `{`, and `}`. A missing semicolon before a statement that begins with an expression still hides any error in that statement, because nothing marks where it starts. The body of a motion with a malformed header is skipped, so errors inside it are not reported until the header is fixed.
+- A function and the scope it was declared in refer to each other, and scopes are reference-counted, so a function declared inside a block or a call keeps that scope's memory until the program exits. A loop that declares a function on every pass grows memory with every pass.
+- The call depth limit is a share of the host stack rather than a fixed number of calls, so the deepest recursion a program can reach differs between builds and platforms.
 - A REPL line is a complete program, so a block must open and close on one line.
 - Expressions can nest at most 10,000 levels. The `tests/lab3/nesting/` and `nesting_*_over_limit` tests are written against that exact number, so changing it means regenerating them.
 
@@ -629,3 +738,47 @@ proof that the untaken branch is never walked. `tests/lab5/repetition/` covers a
 runs three times and one that runs zero times. CI runs Labs 0 through 5.
 
 Logical operators, functions, calls, and results arrive in Week 2.
+
+### Lab 5 Week 2 progress
+
+Programs can now combine conditions and name their own operations. `&&` and `||` are new
+tokens, new precedence levels between assignment and equality, and a new `Logical` node.
+They short-circuit and produce the operand that settled the answer. `motion` declares a
+function, a call runs it, and `typeshi` ends the call and hands back a value, or `nil` when
+there is none.
+
+Functions are values and scope is static, which meant changing how environments are stored.
+A block used to push a scope and pop it on the way out; a function has to keep the scope it
+was declared in after that block has ended, so an environment is now a reference-counted
+handle and a block or a call simply makes a child of the one it runs in. That one change is
+what gives recursion, functions passed and returned as values, and closures.
+
+`typeshi` unwinds without host exceptions: every statement reports whether it finished or
+returned, and blocks, `ong`, and `spin` pass a return straight up to the call. A `typeshi`
+outside a motion is a syntax error. Unbounded recursion is a runtime error, `Stack overflow.`,
+instead of a crashed interpreter, and call expressions count toward the 10,000-level nesting
+limit.
+
+Repetition needed no new grammar: `spin` is unchanged from Week 1. Its new tests cover nested
+loops, compound `&&` and `||` conditions, an unbraced body, and a `typeshi` leaving a loop.
+
+`tests/lab5/logical/` covers which operand each operator produces, short-circuiting of side
+effects and of runtime errors, precedence against each other and against the neighbouring
+levels, and use as conditions. `tests/lab5/functions/` covers declaration and redeclaration,
+parameters and argument order, results and the `nil` default, `typeshi` unwinding out of
+nested statements, recursion and mutual recursion, functions as values, static scope, and
+closures. `tests/lab5/nesting/` holds call nesting at the limit. `tests/lab5/errors/runtime/`
+has one error per file: arity in both directions, calling a non-function, undefined and
+not-yet-declared names, an error inside a function, locals ending with the call, no dynamic
+scope, and the stack limit. `tests/lab5/errors/syntax/` covers malformed declarations and
+calls, `typeshi` outside a motion, a lone `&` and `|`, recovery, and call nesting past the
+limit. `tests/lab1/operators/` and `tests/lab2/` gain the new tokens and the new parse output.
+
+Two native functions are in: `spill()` reads a line of standard input, and `digits(text)`
+turns a string into the number it spells, or `nil`. Natives are a second kind of callable
+value, bound in the global environment before the program starts and dispatched from the same
+call expression as motions, with the same arity check. `tests/lab5/natives/` covers `spill`
+as a value and every spelling `digits` accepts and rejects. `tests/lab5/errors/runtime/` adds
+both arity errors and `digits` given a number.
+
+`pause` and `locked` are still to come.
