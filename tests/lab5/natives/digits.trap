@@ -1,0 +1,36 @@
+// digits turns a string that spells a number into that number
+spittin digits("42"); // expect: 42
+spittin digits("3.14"); // expect: 3.14
+spittin digits("42") + 1; // expect: 43
+spittin digits("1.") == 1; // expect: nocap
+spittin digits("007"); // expect: 7
+// a leading minus is accepted, since input has no other way to be negative
+spittin digits("-7") * 2; // expect: -14
+// spaces around the number are ignored, which suits a line read by spill
+spittin digits("  8  "); // expect: 8
+// anything else is nil, not an error, so a program can check what it was given
+spittin digits("abc"); // expect: nil
+spittin digits(""); // expect: nil
+spittin digits("12abc"); // expect: nil
+spittin digits("1 2"); // expect: nil
+// the spelling is the one number literals use, so these are not numbers either
+spittin digits(".5"); // expect: nil
+spittin digits("1.2.3"); // expect: nil
+spittin digits("1e3"); // expect: nil
+spittin digits("inf"); // expect: nil
+spittin digits("+5"); // expect: nil
+spittin digits("-"); // expect: nil
+spittin digits("- 5"); // expect: nil
+// nil goes straight through. spill gives nil at the end of the input, so digits(spill())
+// is nil there instead of an error
+spittin digits(nil); // expect: nil
+hold missing;
+spittin digits(missing) == nil; // expect: nocap
+// nil is falsey and every number is truthy, zero included, so || supplies a default
+spittin digits("oops") || 10; // expect: 10
+spittin digits("0") || 10; // expect: 0
+// it is a value, like spill
+spittin digits; // expect: <native digits>
+hold parse = digits;
+spittin parse("5") + parse("6"); // expect: 11
+spittin digits == spill; // expect: cap
