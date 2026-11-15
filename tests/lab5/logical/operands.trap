@@ -1,0 +1,13 @@
+// || gives back its left operand when that is truthy, and its right operand otherwise.
+// the result is the operand itself, never a boolean made from it
+spittin "left" || "right"; // expect: left
+spittin nil || "right"; // expect: right
+spittin cap || nil; // expect: nil
+spittin 0 || "zero is truthy"; // expect: 0
+spittin ("" || "the empty string is truthy") == ""; // expect: nocap
+// && gives back its left operand when that is falsey, and its right operand otherwise
+spittin cap && "right"; // expect: cap
+spittin nil && "right"; // expect: nil
+spittin "left" && "right"; // expect: right
+spittin 1 && nil; // expect: nil
+spittin 0 && "zero is truthy"; // expect: zero is truthy

@@ -1,0 +1,18 @@
+// with && a loop stops as soon as either side fails
+hold n = 0;
+hold found = cap;
+spin (n < 10 && !found) {
+  n = n + 1;
+  ong (n * n > 20) { found = nocap; }
+}
+spittin n; // expect: 5
+spittin found; // expect: nocap
+// with || it keeps going while either side still holds
+hold a = 3;
+hold b = 1;
+spin (a > 0 || b > 0) {
+  a = a - 1;
+  b = b - 1;
+}
+spittin a; // expect: 0
+spittin b; // expect: -2

@@ -1,0 +1,13 @@
+// the right operand is not evaluated once the left one has settled the answer: an
+// assignment there never happens, and a runtime error there never fires
+hold ran = "no";
+spittin nocap || (ran = "yes"); // expect: nocap
+spittin ran; // expect: no
+spittin cap && (ran = "yes"); // expect: cap
+spittin ran; // expect: no
+spittin nocap || 1 / 0; // expect: nocap
+spittin nil && "a" - 1; // expect: nil
+// when the left operand does not settle it, the right one runs
+spittin cap || (ran = "or ran it"); // expect: or ran it
+spittin nocap && (ran = "and ran it"); // expect: and ran it
+spittin ran; // expect: and ran it

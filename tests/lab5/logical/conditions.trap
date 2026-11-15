@@ -1,0 +1,7 @@
+// the logical operators as conditions, which is where they are mostly used
+hold age = 20;
+ong (age >= 13 && age < 20) { spittin "teen"; } nah { spittin "not a teen"; } // expect: not a teen
+ong (age < 13 || age >= 20) { spittin "outside"; } // expect: outside
+// a condition only asks whether the result is truthy, so an operand works as well as a boolean
+ong (nil || "fallback") { spittin "truthy"; } // expect: truthy
+ong (0 && nil) { spittin "skipped"; } nah { spittin "falsey"; } // expect: falsey
