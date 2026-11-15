@@ -73,7 +73,7 @@ fn run_cli() -> ExitCode {
 
     if let Some(path) = path {
         match fs::read_to_string(&path) {
-            Ok(source) => ExitCode::from(run_source(stage, source, &mut Environment::new())),
+            Ok(source) => ExitCode::from(run_source(stage, source, &Environment::new())),
             Err(error) => {
                 eprintln!(
                     "Error: Failed to read '{}': {error}",
@@ -94,7 +94,7 @@ fn usage_error(message: &str) -> ExitCode {
 }
 
 // Files and REPL lines share the same scan, parse, and evaluation path.
-fn run_source(stage: Stage, source: String, environment: &mut Environment) -> u8 {
+fn run_source(stage: Stage, source: String, environment: &Environment) -> u8 {
     let scanned = tokenizer(source);
     if !scanned.errors.is_empty() {
         // Token mode also reports the tokens preceding the first scan error.
@@ -149,7 +149,7 @@ fn run_source(stage: Stage, source: String, environment: &mut Environment) -> u8
 
 fn repl(stage: Stage) {
     // One environment for the whole session: a runtime error ends a line, not its variables.
-    let mut environment = Environment::new();
+    let environment = Environment::new();
     loop {
         print!("> ");
         if let Err(error) = io::stdout().flush() {
@@ -165,7 +165,7 @@ fn repl(stage: Stage) {
                 run_source(
                     stage,
                     line.trim_end_matches(['\r', '\n']).to_string(),
-                    &mut environment,
+                    &environment,
                 );
             }
             Err(error) => {

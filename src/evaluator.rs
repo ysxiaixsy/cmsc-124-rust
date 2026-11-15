@@ -43,7 +43,7 @@ pub enum Output {
 // the caller owns the environment, so bindings can outlive one call: a REPL line, in practice
 pub fn evaluate(
     program: &Program,
-    environment: &mut Environment,
+    environment: &Environment,
     output: Output,
     mut emit: impl FnMut(Value),
 ) -> Result<(), RuntimeError> {
@@ -53,7 +53,7 @@ pub fn evaluate(
 // statements run in source order and the first runtime error stops the rest
 fn execute_all(
     statements: &[Stmt],
-    environment: &mut Environment,
+    environment: &Environment,
     output: Output,
     emit: &mut dyn FnMut(Value),
 ) -> Result<(), RuntimeError> {
@@ -65,7 +65,7 @@ fn execute_all(
 
 fn execute(
     statement: &Stmt,
-    environment: &mut Environment,
+    environment: &Environment,
     output: Output,
     emit: &mut dyn FnMut(Value),
 ) -> Result<(), RuntimeError> {
@@ -108,21 +108,17 @@ fn execute(
                 execute(body, environment, output, emit)?;
             }
         }
+        // the block's scope is released when this arm ends, however it ends. the enclosing
+        // scope was never replaced, so there is nothing to restore after an error
         Stmt::Block(statements) => {
-            // nothing between push and pop can return early, so the enclosing scope comes back
-            // even when the block fails. the REPL keeps its environment after a runtime error,
-            // and a scope left pushed would hide the session's own bindings behind the block's
-            environment.push();
-            let result = execute_all(statements, environment, output, emit);
-            environment.pop();
-            result?;
+            execute_all(statements, &environment.child(), output, emit)?;
         }
     }
     Ok(())
 }
 
 // walk the tree directly: evaluate the children first, then apply the operator to their values
-fn evaluate_expression(expr: &Expr, environment: &mut Environment) -> Result<Value, RuntimeError> {
+fn evaluate_expression(expr: &Expr, environment: &Environment) -> Result<Value, RuntimeError> {
     match expr {
         Expr::Literal(literal) => Ok(match literal {
             Literal::Number(value) => Value::Number(*value),
