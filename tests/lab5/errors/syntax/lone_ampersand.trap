@@ -1,0 +1,2 @@
+// the logical operators only exist doubled, so one & is not a token at all
+spittin 1 & 2; // expect error: Unexpected character '&' on line 2

@@ -1,0 +1,37 @@
+// a motion can call itself: its name is bound in the scope its body reads from
+motion factorial(n) {
+  ong (n <= 1) { typeshi 1; }
+  typeshi n * factorial(n - 1);
+}
+spittin factorial(5); // expect: 120
+motion fib(n) {
+  ong (n < 2) { typeshi n; }
+  typeshi fib(n - 1) + fib(n - 2);
+}
+spittin fib(15); // expect: 610
+// each call has its own parameters, so the n of an outer call survives the inner ones
+motion countdown(n) {
+  ong (n > 0) { countdown(n - 1); }
+  spittin n; // expect: 0
+             // expect: 1
+             // expect: 2
+}
+countdown(2);
+// two motions can call each other. a name is looked up when the call runs, so is_even can
+// mention is_odd before is_odd has been declared
+motion is_even(n) {
+  ong (n == 0) { typeshi nocap; }
+  typeshi is_odd(n - 1);
+}
+motion is_odd(n) {
+  ong (n == 0) { typeshi cap; }
+  typeshi is_even(n - 1);
+}
+spittin is_even(10); // expect: nocap
+spittin is_odd(10); // expect: cap
+// ten thousand calls deep is well inside the limit
+motion depth(n) {
+  ong (n == 0) { typeshi 0; }
+  typeshi 1 + depth(n - 1);
+}
+spittin depth(10000); // expect: 10000

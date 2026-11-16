@@ -1,0 +1,2 @@
+// the arguments run before the callee is checked, so the error inside one is what is reported
+"not a motion"(1 / 0); // expect runtime error: Division by zero.

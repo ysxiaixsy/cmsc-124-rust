@@ -1,0 +1,1 @@
+motion f { spittin 1; } // expect error: [line 1] Error at '{': Expect '(' after motion name.

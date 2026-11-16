@@ -1,0 +1,5 @@
+// a failed call reports the line its ( is on, wherever the arguments end
+motion two(a, b) {}
+two(
+  1
+); // expect runtime error: [line 3] Runtime error: Expected 2 arguments but got 1.

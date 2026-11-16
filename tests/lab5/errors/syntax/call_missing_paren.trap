@@ -1,0 +1,2 @@
+spittin add(1, 2; // expect error: [line 1] Error at ';': Expect ')' after arguments.
+spittin add(1 2); // expect error: [line 2] Error at '2': Expect ')' after arguments.

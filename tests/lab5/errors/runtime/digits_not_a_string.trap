@@ -1,0 +1,6 @@
+// digits converts strings, and lets nil through. any other value is a type error: a number
+// is not quietly handed back
+spittin digits("5"); // expect: 5
+spittin digits(nil); // expect: nil
+spittin digits(5); // expect runtime error: Argument to digits must be a string.
+spittin "not reached";

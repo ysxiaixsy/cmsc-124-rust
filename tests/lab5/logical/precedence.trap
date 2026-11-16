@@ -1,0 +1,17 @@
+// && binds tighter than ||. read the other way round, as (nocap || cap) && cap, this is cap
+spittin nocap || cap && cap; // expect: nocap
+spittin cap && cap || nocap; // expect: nocap
+// parentheses still override it
+spittin (nocap || cap) && cap; // expect: cap
+// both sit below equality and comparison, so each side is worked out first
+spittin 1 < 2 && 2 < 3; // expect: nocap
+spittin 1 == 2 || 3 == 3; // expect: nocap
+spittin 1 > 2 || 2 > 3; // expect: cap
+// ! binds tighter than both
+spittin !cap && !nil; // expect: nocap
+// and both sit above assignment, so the whole expression is what gets stored
+hold x = cap || "stored";
+spittin x; // expect: stored
+// each groups from the left
+spittin nil || cap || "last"; // expect: last
+spittin 1 && 2 && 3; // expect: 3

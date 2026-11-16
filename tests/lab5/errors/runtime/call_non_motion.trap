@@ -1,0 +1,4 @@
+// only a motion can be called. a string is not one, even when it spells a motion's name
+motion add(a, b) { typeshi a + b; }
+hold name = "add";
+name(1, 2); // expect runtime error: Can only call motions.

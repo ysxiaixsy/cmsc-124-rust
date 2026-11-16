@@ -18,6 +18,8 @@ pub enum Tokentypes {
     Semicolon,
     Identifier,
     Not,
+    And,        // &&
+    Or,         // ||
     Slash,
     Star,
     Num,

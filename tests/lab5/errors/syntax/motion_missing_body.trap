@@ -1,0 +1,3 @@
+// the body has to be a block, even when it is a single statement
+motion f() typeshi 1; // expect error: [line 2] Error at 'typeshi': Expect '{' before motion body.
+motion g(); // expect error: [line 3] Error at ';': Expect '{' before motion body.

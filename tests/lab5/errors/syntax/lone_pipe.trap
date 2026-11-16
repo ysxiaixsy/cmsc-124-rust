@@ -1,0 +1,1 @@
+spittin 1 | 2; // expect error: Unexpected character '|' on line 1

@@ -1,0 +1,42 @@
+Token {
+    token_type: Identifier,
+    lexeme: "a",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: And,
+    lexeme: "&&",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "b",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: Or,
+    lexeme: "||",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: Not,
+    lexeme: "!",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: Identifier,
+    lexeme: "c",
+    literal: None,
+    line: 1,
+}
+Token {
+    token_type: Eof,
+    lexeme: "",
+    literal: None,
+    line: 2,
+}

@@ -1,0 +1,2 @@
+// calling a name nothing has declared fails on the name, before any call is attempted
+missing(1); // expect runtime error: Undefined variable 'missing'.

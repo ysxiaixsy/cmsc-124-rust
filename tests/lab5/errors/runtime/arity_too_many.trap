@@ -1,0 +1,3 @@
+// a spare argument is not dropped. the body never starts, so nothing inside it prints
+motion one(a) { spittin "body ran"; }
+one(1, 2); // expect runtime error: Expected 1 arguments but got 2.

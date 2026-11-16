@@ -1,0 +1,29 @@
+// a typeshi ends the whole call from however deep it sits: here from inside a spin, a block,
+// and an ong. without it this loop would never stop
+motion first_square_over(limit) {
+  hold n = 1;
+  spin (nocap) {
+    {
+      ong (n * n > limit) {
+        typeshi n;
+      }
+    }
+    n = n + 1;
+  }
+}
+spittin first_square_over(50); // expect: 8
+// it ends only its own call. the caller carries on after it
+motion inner() { typeshi "inner"; }
+motion outer() {
+  hold got = inner();
+  typeshi got + " then outer";
+}
+spittin outer(); // expect: inner then outer
+// a loop in the caller keeps going after a call inside it returns
+hold i = 0;
+spin (i < 3) {
+  spittin inner(); // expect: inner
+                   // expect: inner
+                   // expect: inner
+  i = i + 1;
+}

@@ -1,0 +1,3 @@
+// a motion with no typeshi produces nil, and nil cannot be called
+motion nothing() {}
+nothing()(); // expect runtime error: Can only call motions.

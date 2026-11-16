@@ -1,0 +1,2 @@
+// a call produces a value, not a place to store one
+f() = 1; // expect error: [line 2] Error at '=': Invalid assignment target.

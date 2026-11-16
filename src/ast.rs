@@ -1,8 +1,18 @@
+use std::rc::Rc;
+
 use crate::tokens::Token;
 
 // one root owns every statement in source order
 pub struct Program {
     pub statements: Vec<Stmt>,
+}
+
+// what a `motion` declares. the parameters and the body share one scope when it is called,
+// so the body is the statements between the braces rather than a Block node
+pub struct FunctionDecl {
+    pub name: Token,
+    pub params: Vec<Token>,
+    pub body: Vec<Stmt>,
 }
 
 pub enum Stmt {
@@ -22,6 +32,11 @@ pub enum Stmt {
     },
     // spin: re-tests the condition before every pass, so a false condition runs the body zero times
     Spin { condition: Expr, body: Box<Stmt> },
+    // motion: shared rather than owned, because the function value it creates has to outlive
+    // this tree. a REPL line's tree is dropped when the line ends; its functions stay callable
+    Motion(Rc<FunctionDecl>),
+    // typeshi: ends the call it runs in. no expression means the call produces nil
+    Return(Option<Expr>),
 }
 
 // the source value a literal node holds
@@ -41,6 +56,10 @@ pub enum Expr {
     Grouping(Box<Expr>),
     Unary { operator: Token, right: Box<Expr> },
     Binary { left: Box<Expr>, operator: Token, right: Box<Expr> },
+    // && and ||. kept apart from Binary because the right operand may never be evaluated
+    Logical { left: Box<Expr>, operator: Token, right: Box<Expr> },
+    // callee(arguments). the opening parenthesis is kept so a failed call can report its line
+    Call { callee: Box<Expr>, paren: Token, arguments: Vec<Expr> },
     Variable(Token),
     Assign { name: Token, value: Box<Expr> },
 }

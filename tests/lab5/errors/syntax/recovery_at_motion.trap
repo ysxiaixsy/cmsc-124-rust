@@ -1,0 +1,7 @@
+// recovery resumes at motion and at typeshi after a missing semicolon, so each still parses
+hold x = 1
+motion f() { // expect error: [line 3] Error at 'motion': Expect ';' after variable declaration.
+  hold y = 2
+  typeshi // expect error: [line 5] Error at 'typeshi': Expect ';' after variable declaration.
+    y +; // expect error: [line 6] Error at ';': Expect expression.
+}

@@ -1,0 +1,28 @@
+// typeshi hands a value back, and the call expression produces it
+motion add(a, b) { typeshi a + b; }
+spittin add(1, 2); // expect: 3
+spittin add("trap", "script"); // expect: trapscript
+// a result is a value like any other
+spittin add(add(1, 2), add(3, 4)) * 2; // expect: 20
+hold kept = add(5, 5);
+spittin kept; // expect: 10
+// typeshi ends the call there: nothing after it runs
+motion early() {
+  typeshi "returned";
+  spittin "never printed";
+}
+spittin early(); // expect: returned
+// a motion that runs off its end produces nil, and so does a typeshi with no value
+motion nothing() {}
+spittin nothing(); // expect: nil
+motion bare() { typeshi; }
+spittin bare(); // expect: nil
+// which typeshi runs can depend on the arguments
+motion sign(n) {
+  ong (n < 0) { typeshi "negative"; }
+  wait (n == 0) { typeshi "zero"; }
+  typeshi "positive";
+}
+spittin sign(-5); // expect: negative
+spittin sign(0); // expect: zero
+spittin sign(5); // expect: positive

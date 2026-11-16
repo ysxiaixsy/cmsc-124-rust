@@ -1,0 +1,2 @@
+// a native's argument count is checked like a motion's, before it runs, so no input is read
+spill("prompt"); // expect runtime error: Expected 0 arguments but got 1.

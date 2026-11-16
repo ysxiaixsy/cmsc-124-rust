@@ -1,0 +1,4 @@
+// short-circuiting skips the right operand only when the left one settles the answer.
+// here it does not, so the right operand runs and its error is reported
+spittin cap || "kept"; // expect: kept
+spittin cap || nil + 1; // expect runtime error: Operands must be two numbers or two strings.

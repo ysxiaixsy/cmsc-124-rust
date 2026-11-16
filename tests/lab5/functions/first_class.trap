@@ -1,0 +1,28 @@
+// a motion is a value: it prints, binds to other names, and compares by identity
+motion add(a, b) { typeshi a + b; }
+spittin add; // expect: <motion add>
+hold plus = add;
+spittin plus(2, 3); // expect: 5
+spittin plus; // expect: <motion add>
+spittin plus == add; // expect: nocap
+motion same_text(a, b) { typeshi a + b; }
+spittin same_text == add; // expect: cap
+spittin add != nil; // expect: nocap
+// it can be passed as an argument
+motion apply_twice(f, value) { typeshi f(f(value)); }
+motion double(n) { typeshi n * 2; }
+spittin apply_twice(double, 5); // expect: 20
+// and returned as a result, then called straight away
+motion choose(want_double) {
+  motion negate(n) { typeshi -n; }
+  ong (want_double) { typeshi double; }
+  typeshi negate;
+}
+spittin choose(nocap)(4); // expect: 8
+spittin choose(cap)(4); // expect: -4
+// a name bound to a motion can be bound to something else, like any binding
+add = "no longer a motion";
+spittin add; // expect: no longer a motion
+spittin plus(1, 1); // expect: 2
+// a motion is truthy
+spittin !double; // expect: cap

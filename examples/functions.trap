@@ -1,0 +1,70 @@
+// functions.trap: motion declarations, calls, typeshi, recursion, closures, and && / ||
+// run with: ./run examples/functions.trap
+//
+// expected output:
+//   fizzbuzz
+//   1
+//   2
+//   fizz
+//   4
+//   buzz
+//   120
+//   1
+//   2
+//   1
+//   guest
+
+// && only looks at its right side when the left side is truthy
+motion fizzbuzz(n) {
+  ong (n / 3 == whole(n / 3) && n / 5 == whole(n / 5)) { typeshi "fizzbuzz"; }
+  ong (n / 3 == whole(n / 3)) { typeshi "fizz"; }
+  ong (n / 5 == whole(n / 5)) { typeshi "buzz"; }
+  typeshi n;
+}
+
+// there is no remainder operator yet, so count up to the whole part of a number.
+// a typeshi inside the spin ends the loop and the call together
+motion whole(n) {
+  hold count = 0;
+  spin (nocap) {
+    ong (count + 1 > n) { typeshi count; }
+    count = count + 1;
+  }
+}
+
+spittin fizzbuzz(15);
+hold i = 1;
+spin (i <= 5) {
+  spittin fizzbuzz(i);
+  i = i + 1;
+}
+
+// a motion can call itself
+motion factorial(n) {
+  ong (n <= 1) { typeshi 1; }
+  typeshi n * factorial(n - 1);
+}
+spittin factorial(5);
+
+// next keeps reading and changing count after make_counter has returned, and each call of
+// make_counter makes a separate count
+motion make_counter() {
+  hold count = 0;
+  motion next() {
+    count = count + 1;
+    typeshi count;
+  }
+  typeshi next;
+}
+hold a = make_counter();
+hold b = make_counter();
+spittin a();
+spittin a();
+spittin b();
+
+// || hands back its left side when that is truthy and its right side otherwise, so it
+// works as a default
+motion name_or_guest(name) {
+  typeshi name || "guest";
+}
+spittin name_or_guest(nil);

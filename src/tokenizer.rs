@@ -46,6 +46,17 @@ pub fn tokenizer(input: String) -> ScanResult {
                 i += len;
             }
 
+            // the logical operators only exist doubled. a lone & or | means nothing here, so it
+            // falls through to the unexpected-character arm at the bottom
+            '&' if chars.get(i + 1) == Some(&'&') => {
+                tokens.push(Token { token_type: Tokentypes::And, lexeme: "&&".into(), literal: None, line });
+                i += 2;
+            }
+            '|' if chars.get(i + 1) == Some(&'|') => {
+                tokens.push(Token { token_type: Tokentypes::Or, lexeme: "||".into(), literal: None, line });
+                i += 2;
+            }
+
             // simple single-char tokens
             ';' => { tokens.push(Token { token_type: Tokentypes::Semicolon, lexeme: ";".into(), literal: None, line }); i += 1; }
             ',' => { tokens.push(Token { token_type: Tokentypes::Comma, lexeme: ",".into(), literal: None, line }); i += 1; }
