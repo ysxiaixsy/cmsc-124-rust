@@ -420,6 +420,8 @@ Syntax errors from `--parse` name the line and the token where parsing failed, o
 [line 2] Error at 'a': Duplicate parameter name 'a'.
 [line 1] Error at ';': Expect ')' after arguments.
 [line 4] Error at 'typeshi': Can't use 'typeshi' outside a motion.
+[line 1] Error at 'pause': Can't use 'pause' outside a spin.
+[line 1] Error at ';': Expect '=' after locked name.
 ```
 
 Runtime errors name the line and stop the program:
@@ -428,18 +430,22 @@ Runtime errors name the line and stop the program:
 [line 3] Runtime error: Expected 2 arguments but got 1.
 [line 4] Runtime error: Can only call motions.
 [line 5] Runtime error: Stack overflow.
+[line 3] Runtime error: Can't assign to locked 'x'.
+[line 4] Runtime error: Position 1 is out of range for a stash of 1.
 ```
 
-The parser reports syntax errors with the token line and continues recovery at a statement boundary, or EOF, while ensuring it makes progress. A statement boundary is just after a semicolon, or just before a token that starts a statement (`hold`, `motion`, `typeshi`, `spittin`, `{`) or ends a block (`}`). Stopping before `}` means an error inside a block is recorded and the block still parses to its own closing brace, so one mistake does not turn the rest of the block, or its `}`, into further errors. A `}` with no open block is reported once and skipped. A block nested past the limit is reported once and skipped through its matching `}`. A motion whose header is malformed is reported once and its body is skipped through its matching `}`: parsed as a top-level block instead, every `typeshi` inside it would be reported again as being outside a motion. A missing semicolon, including after the last expression at EOF, is a syntax error. A missing operand is reported at the token or EOF where parsing fails. The parser publishes no program if any syntax errors occurred. Like `--tokenize`, a rejected file prints nothing to stdout and exits `65`.
+The parser reports syntax errors with the token line and continues recovery at a statement boundary, or EOF, while ensuring it makes progress. A statement boundary is just after a semicolon, or just before a token that starts a statement (`hold`, `locked`, `motion`, `typeshi`, `pause`, `spittin`, `{`) or ends a block (`}`). Stopping before `}` means an error inside a block is recorded and the block still parses to its own closing brace, so one mistake does not turn the rest of the block, or its `}`, into further errors. A `}` with no open block is reported once and skipped. A block nested past the limit is reported once and skipped through its matching `}`. A motion whose header is malformed is reported once and its body is skipped through its matching `}`: parsed as a top-level block instead, every `typeshi` inside it would be reported again as being outside a motion. A missing semicolon, including after the last expression at EOF, is a syntax error. A missing operand is reported at the token or EOF where parsing fails. The parser publishes no program if any syntax errors occurred. Like `--tokenize`, a rejected file prints nothing to stdout and exits `65`.
 
 
 | Failure | Exit code |
 |---|---|
 | lexical error: unexpected character (including a lone `&` or `\|`) or unterminated string | 65 |
-| syntax error: a missing `)`, a missing operand, a token that can't start an expression, a malformed `hold` or `motion`, a duplicate parameter name, a `typeshi` outside a motion, an invalid assignment target, an unclosed block or a stray `}`, or an expression or block nested past the limit | 65 |
+| syntax error: a missing `)`, a missing operand, a token that can't start an expression, a malformed `hold`, `locked`, or `motion`, a duplicate parameter name, a `typeshi` outside a motion, a `pause` outside a `spin`, an invalid assignment target, an unclosed block or a stray `}`, or an expression or block nested past the limit | 65 |
 | runtime type error, division by zero, or an undefined variable | 70 |
+| assigning to a locked binding, or redeclaring one in its own scope | 70 |
 | a call with the wrong number of arguments, a call of something that is not a function, or calls nested past the stack limit | 70 |
 | `spill` failing to read standard input, such as input that is not valid UTF-8, or `digits` given something that is neither a string nor `nil` | 70 |
+| a native given the wrong kind of argument, or a position that is not whole or does not fit (`slice`, `grab`, `put`) | 70 |
 
 
 ## Testing conventions
