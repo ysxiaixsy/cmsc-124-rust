@@ -1,0 +1,1 @@
+pause; // expect error: Can't use 'pause' outside a spin.
