@@ -1,0 +1,3 @@
+// joining a number onto a string still needs sayit. + never converts by itself
+spittin "score: " + sayit(10); // expect: score: 10
+spittin "score: " + 10; // expect runtime error: Operands must be two numbers or two strings.

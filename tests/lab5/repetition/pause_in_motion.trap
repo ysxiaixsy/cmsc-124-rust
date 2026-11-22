@@ -1,0 +1,11 @@
+// a pause ends the spin, not the call: the statements after the spin still run
+motion firstOver(limit) {
+  hold n = 0;
+  spin (nocap) {
+    n = n + 1;
+    ong (n * n > limit) pause;
+  }
+  typeshi n;
+}
+spittin firstOver(10); // expect: 4
+spittin firstOver(0); // expect: 1

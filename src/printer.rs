@@ -20,6 +20,9 @@ fn print_statement(statement: &Stmt) -> String {
             name,
             initializer: None,
         } => format!("(hold {})", name.lexeme),
+        Stmt::Locked { name, value } => {
+            format!("(locked {} {})", name.lexeme, print_expression(value))
+        }
         Stmt::Block(statements) => print_block(statements),
         // the name, then the parameters in their own parentheses so a motion with none still
         // shows the slot, then the body: (motion add (a b) (block (typeshi (+ a b))))
@@ -38,6 +41,7 @@ fn print_statement(statement: &Stmt) -> String {
         }
         Stmt::Return(Some(expr)) => format!("(typeshi {})", print_expression(expr)),
         Stmt::Return(None) => "(typeshi)".to_string(),
+        Stmt::Pause => "(pause)".to_string(),
         // the else slot is printed only when it exists, so a bare ong reads (ong cond then)
         Stmt::Ong {
             condition,

@@ -1,0 +1,1 @@
+spin (nocap) { pause } // expect error: Expect ';' after pause.

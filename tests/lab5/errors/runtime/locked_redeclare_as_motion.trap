@@ -1,0 +1,2 @@
+locked go = 1;
+motion go() { } // expect runtime error: Can't redeclare locked 'go'.

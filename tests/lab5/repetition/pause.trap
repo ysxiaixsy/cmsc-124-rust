@@ -1,0 +1,10 @@
+// pause ends the nearest spin, and the statement after that spin runs next
+hold i = 0;
+spin (nocap) {
+  ong (i == 3) { pause; }
+  spittin i; // expect: 0
+             // expect: 1
+             // expect: 2
+  i = i + 1;
+}
+spittin "out"; // expect: out

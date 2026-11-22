@@ -1,0 +1,10 @@
+// has(text, part) is whether part appears anywhere in text
+spittin has("no cap fr", "cap"); // expect: nocap
+spittin has("no cap fr", "lie"); // expect: cap
+// it matches exactly, so case counts
+spittin has("no cap fr", "Cap"); // expect: cap
+// every string has the empty string, and the empty string has nothing else
+spittin has("anything", ""); // expect: nocap
+spittin has("", "x"); // expect: cap
+// the answer is a boolean, so it can drive a decision
+ong (has("trapscript", "script")) { spittin "found"; } nah { spittin "missing"; } // expect: found

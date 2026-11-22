@@ -1,0 +1,5 @@
+// a motion's body is not inside the spin its declaration sits in: the body runs during a
+// call, so there is no spin there for the pause to end
+spin (cap) {
+  motion f() { pause; } // expect error: Can't use 'pause' outside a spin.
+}

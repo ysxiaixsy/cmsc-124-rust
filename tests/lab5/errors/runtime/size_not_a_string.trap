@@ -1,0 +1,1 @@
+size(5); // expect runtime error: Argument to size must be a string or a stash.

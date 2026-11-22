@@ -1,0 +1,7 @@
+// assignment walks outward to the binding the name means, and is refused there. being inside
+// a call and a block makes no difference
+locked limit = 5;
+motion raise() { limit = limit + 1; }
+{
+  raise(); // expect runtime error: Can't assign to locked 'limit'.
+}

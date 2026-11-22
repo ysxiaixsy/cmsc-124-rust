@@ -1,0 +1,5 @@
+// a position with nothing there is an error, not nil: nil could be a value someone stacked
+hold s = stash();
+stack(s, 1);
+spittin grab(s, 0); // expect: 1
+grab(s, 1); // expect runtime error: Position 1 is out of range for a stash of 1.

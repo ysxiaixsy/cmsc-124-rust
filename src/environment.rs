@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::evaluator::RuntimeError;
@@ -20,6 +20,9 @@ pub struct Environment(Rc<RefCell<Scope>>);
 
 struct Scope {
     values: HashMap<String, Value>,
+    // the names in this scope that were declared with `locked`. a set beside the map, not a
+    // flag on every value: locking belongs to the binding, and most bindings never have it
+    locked: HashSet<String>,
     enclosing: Option<Environment>,
 }
 
@@ -38,15 +41,34 @@ impl Environment {
     fn with_enclosing(enclosing: Option<Environment>) -> Self {
         Self(Rc::new(RefCell::new(Scope {
             values: HashMap::new(),
+            locked: HashSet::new(),
             enclosing,
         })))
     }
 
-    // hold: always binds in the innermost scope and never fails, so a block's hold shadows an
-    // outer name instead of touching it. inserting over an existing name is what makes
-    // redeclaration in one scope legal, so this is the one line to change if that ever flips
+    // natives and parameters: always binds in the innermost scope and never fails. both go
+    // into a scope that was just made, so there is nothing there yet to collide with
     pub fn define(&self, name: &str, value: Value) {
         self.0.borrow_mut().values.insert(name.to_string(), value);
+    }
+
+    // hold, motion, and locked: binds in the innermost scope without looking outward, so a
+    // block's declaration shadows an outer name instead of touching it. inserting over an
+    // existing name is what makes redeclaration in one scope legal. the one name it refuses
+    // to replace is a locked one: if a second declaration could take its place, locking it
+    // would have promised nothing. an enclosing scope's lock doesn't count, because a new
+    // binding in here is a different binding
+    pub fn declare(&self, name: &Token, value: Value, locked: bool) -> Result<(), RuntimeError> {
+        let mut scope = self.0.borrow_mut();
+        if scope.locked.contains(&name.lexeme) {
+            let message = format!("Can't redeclare locked '{}'.", name.lexeme);
+            return Err(RuntimeError::new(name, &message));
+        }
+        scope.values.insert(name.lexeme.clone(), value);
+        if locked {
+            scope.locked.insert(name.lexeme.clone());
+        }
+        Ok(())
     }
 
     // innermost scope first, then outward; the first match wins and hides any outer one
@@ -68,12 +90,18 @@ impl Environment {
     }
 
     // assignment searches the same way, and only updates. it must never fall back to creating a
-    // binding, or every misspelled name in a program would quietly become a new variable
+    // binding, or every misspelled name in a program would quietly become a new variable. the
+    // binding it finds is the one the name means here, so if that one is locked the assignment
+    // is refused, rather than carrying on outward to some other binding of the same name
     pub fn assign(&self, name: &Token, value: Value) -> Result<(), RuntimeError> {
         let mut environment = self.clone();
         loop {
             let enclosing = {
                 let mut scope = environment.0.borrow_mut();
+                if scope.locked.contains(&name.lexeme) {
+                    let message = format!("Can't assign to locked '{}'.", name.lexeme);
+                    return Err(RuntimeError::new(name, &message));
+                }
                 if let Some(slot) = scope.values.get_mut(&name.lexeme) {
                     *slot = value;
                     return Ok(());

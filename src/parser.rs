@@ -27,6 +27,9 @@ pub struct Parser {
     // how many motion bodies enclose the statement being parsed. zero means top-level code,
     // where there is no call for a typeshi to end
     function_depth: usize,
+    // how many spins enclose the statement being parsed, counting only the ones in the same
+    // motion body. zero means there is no loop here for a pause to end
+    loop_depth: usize,
     // every syntax error so far. a block records its own statements' errors here and keeps
     // going, so one mistake inside braces doesn't throw away the rest of the block
     errors: Vec<ParseError>,
@@ -40,6 +43,7 @@ impl Parser {
             depth: 0,
             block_depth: 0,
             function_depth: 0,
+            loop_depth: 0,
             errors: Vec::new(),
         }
     }
@@ -77,13 +81,16 @@ impl Parser {
         }
     }
 
-    // declaration -> motionDeclaration | holdDeclaration | statement
+    // declaration -> motionDeclaration | holdDeclaration | lockedDeclaration | statement
     fn declaration(&mut self) -> Result<Stmt, ParseError> {
         if self.match_types(&[Tokentypes::Motion]) {
             return self.motion_declaration();
         }
         if self.match_types(&[Tokentypes::Hold]) {
             return self.hold_declaration();
+        }
+        if self.match_types(&[Tokentypes::Locked]) {
+            return self.locked_declaration();
         }
         self.statement()
     }
@@ -101,8 +108,12 @@ impl Parser {
 
         // the count comes back down before the error is looked at, so a broken body can't
         // leave the rest of the file believing it is still inside a motion
+        // a motion's body starts with no loops around it, even when the declaration itself
+        // sits inside a spin: a pause in the body would run during a call, not during that spin
         self.function_depth += 1;
+        let loops_outside = std::mem::replace(&mut self.loop_depth, 0);
         let body = self.block_statements();
+        self.loop_depth = loops_outside;
         self.function_depth -= 1;
 
         Ok(Stmt::Motion(Rc::new(FunctionDecl {
@@ -173,8 +184,22 @@ impl Parser {
         Ok(Stmt::Hold { name, initializer })
     }
 
-    // statement -> block | ongStatement | spinStatement | returnStatement | printStatement
-    //            | expressionStatement
+    // lockedDeclaration -> "locked" IDENTIFIER "=" expression ";"
+    // the value is required where hold's is optional: a locked name can never be assigned
+    // later, so one declared without a value would be stuck at nil for good
+    fn locked_declaration(&mut self) -> Result<Stmt, ParseError> {
+        self.consume(Tokentypes::Identifier, "Expect variable name.")?;
+        let name = self.previous().clone();
+
+        self.consume(Tokentypes::Equal, "Expect '=' after locked name.")?;
+        let value = self.expression()?;
+
+        self.consume(Tokentypes::Semicolon, "Expect ';' after variable declaration.")?;
+        Ok(Stmt::Locked { name, value })
+    }
+
+    // statement -> block | ongStatement | spinStatement | pauseStatement | returnStatement
+    //            | printStatement | expressionStatement
     // the leading token is the only thing that distinguishes them, so one token of
     // lookahead picks the branch and no backtracking is needed
     fn statement(&mut self) -> Result<Stmt, ParseError> {
@@ -187,6 +212,9 @@ impl Parser {
         if self.match_types(&[Tokentypes::Spin]) {
             return self.spin_statement();
         }
+        if self.match_types(&[Tokentypes::Pause]) {
+            return self.pause_statement();
+        }
         if self.match_types(&[Tokentypes::Typeshi]) {
             return self.return_statement();
         }
@@ -194,6 +222,18 @@ impl Parser {
             return self.print_statement();
         }
         self.expression_statement()
+    }
+
+    // pauseStatement -> "pause" ";"
+    // a pause with no spin to end is rejected here, the same way a stray typeshi is, so the
+    // evaluator never meets one it has nowhere to send
+    fn pause_statement(&mut self) -> Result<Stmt, ParseError> {
+        let keyword = self.previous().clone();
+        if self.loop_depth == 0 {
+            return Err(self.error(&keyword, "Can't use 'pause' outside a spin."));
+        }
+        self.consume(Tokentypes::Semicolon, "Expect ';' after pause.")?;
+        Ok(Stmt::Pause)
     }
 
     // returnStatement -> "typeshi" expression? ";"
@@ -245,8 +285,15 @@ impl Parser {
     // spinStatement -> "spin" "(" expression ")" statement
     fn spin_statement(&mut self) -> Result<Stmt, ParseError> {
         let condition = self.parenthesized_condition("spin")?;
-        let body = Box::new(self.statement()?);
-        Ok(Stmt::Spin { condition, body })
+        // the count comes back down before the error is looked at, so a broken body can't
+        // leave the rest of the file believing it is still inside a spin
+        self.loop_depth += 1;
+        let body = self.statement();
+        self.loop_depth -= 1;
+        Ok(Stmt::Spin {
+            condition,
+            body: Box::new(body?),
+        })
     }
 
     // both control forms wrap their condition in parentheses, so the brackets are demanded once
@@ -626,8 +673,8 @@ impl Parser {
     }
 
     // skip past the failed statement to the next place a statement can begin: just after a
-    // semicolon, or just before a token that starts a statement (`hold`, `motion`, `typeshi`,
-    // `spittin`, `{`) or ends a block (`}`). stopping before `}` is what lets the enclosing
+    // semicolon, or just before a token that starts a statement (`hold`, `locked`, `motion`,
+    // `typeshi`, `pause`, `spittin`, `{`) or ends a block (`}`). stopping before `}` is what lets the enclosing
     // block still close.
     // a delimiter already consumed by the failed production is also a recovery boundary
     fn synchronize(&mut self, statement_start: usize) {
@@ -645,8 +692,10 @@ impl Parser {
         while !self.is_at_end() {
             match self.peek().token_type {
                 Tokentypes::Hold
+                | Tokentypes::Locked
                 | Tokentypes::Motion
                 | Tokentypes::Typeshi
+                | Tokentypes::Pause
                 | Tokentypes::Spittin
                 | Tokentypes::LeftBrace
                 | Tokentypes::RightBrace => return,

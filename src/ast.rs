@@ -21,6 +21,9 @@ pub enum Stmt {
     Print(Expr),
     // hold: creates a binding. the name keeps its whole token so errors can report its line
     Hold { name: Token, initializer: Option<Expr> },
+    // locked: creates a binding that can never be assigned to or redeclared. it always has a
+    // value, because there would be no later chance to give it one
+    Locked { name: Token, value: Expr },
     // { ... }: its statements run in a new innermost scope that ends at the closing brace
     Block(Vec<Stmt>),
     // ong / wait / nah. the branches are statements, so either can be a block or another ong,
@@ -37,6 +40,8 @@ pub enum Stmt {
     Motion(Rc<FunctionDecl>),
     // typeshi: ends the call it runs in. no expression means the call produces nil
     Return(Option<Expr>),
+    // pause: ends the nearest spin around it, and nothing further out
+    Pause,
 }
 
 // the source value a literal node holds

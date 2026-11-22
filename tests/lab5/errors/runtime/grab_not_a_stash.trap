@@ -1,0 +1,1 @@
+grab(nil, 0); // expect runtime error: First argument to grab must be a stash.

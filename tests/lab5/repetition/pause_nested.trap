@@ -1,0 +1,13 @@
+// a pause ends only the spin it sits in. the outer spin carries on with its next pass
+hold outer = 0;
+spin (outer < 2) {
+  hold inner = 0;
+  spin (nocap) {
+    ong (inner == 2) pause;
+    inner = inner + 1;
+  }
+  spittin inner; // expect: 2
+                 // expect: 2
+  outer = outer + 1;
+}
+spittin outer; // expect: 2

@@ -1,0 +1,27 @@
+// a spin walks a stash by position, from 0 up to its size
+hold prices = stash();
+stack(prices, 5);
+stack(prices, 15);
+stack(prices, 20);
+hold total = 0;
+hold i = 0;
+spin (i < size(prices)) {
+  total = total + grab(prices, i);
+  i = i + 1;
+}
+spittin "total: " + sayit(total); // expect: total: 40
+// pause ends the walk at the first match
+hold names = stash();
+stack(names, "ana");
+stack(names, "ben");
+stack(names, "cy");
+hold found = nil;
+i = 0;
+spin (i < size(names)) {
+  ong (grab(names, i) == "ben") {
+    found = i;
+    pause;
+  }
+  i = i + 1;
+}
+spittin found; // expect: 1

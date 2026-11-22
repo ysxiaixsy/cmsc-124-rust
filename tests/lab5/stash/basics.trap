@@ -1,0 +1,30 @@
+// stash() makes an empty stash, stack puts a value on the end, and grab reads a position,
+// counting from 0
+hold scores = stash();
+spittin scores; // expect: []
+spittin size(scores); // expect: 0
+stack(scores, 10);
+stack(scores, 20);
+stack(scores, 30);
+spittin scores; // expect: [10, 20, 30]
+spittin size(scores); // expect: 3
+spittin grab(scores, 0); // expect: 10
+spittin grab(scores, 2); // expect: 30
+// put replaces a position that already holds a value
+put(scores, 1, 25);
+spittin scores; // expect: [10, 25, 30]
+// any value can go in. a string keeps its quotes when the stash is printed, so "1" and 1
+// look different
+hold mixed = stash();
+stack(mixed, "1");
+stack(mixed, 1);
+stack(mixed, cap);
+stack(mixed, nil);
+spittin mixed; // expect: ["1", 1, cap, nil]
+// stack and put answer nil: the change to the stash is the point
+spittin stack(mixed, 2); // expect: nil
+spittin put(mixed, 0, "one"); // expect: nil
+spittin mixed; // expect: ["one", 1, cap, nil, 2]
+// a stash is a value, so it is truthy even when empty, and it can be said
+spittin !stash(); // expect: cap
+spittin "scores: " + sayit(scores); // expect: scores: [10, 25, 30]

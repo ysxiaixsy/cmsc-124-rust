@@ -1,0 +1,1 @@
+slice("trap", 3, 1); // expect runtime error: Can't slice 3 to 1 from a string of 4 characters.

@@ -1,0 +1,2 @@
+// 1.5 and -1 name no position, and rounding would pick one the program never asked for
+slice("trap", 0.5, 2); // expect runtime error: Slice positions must be whole numbers.

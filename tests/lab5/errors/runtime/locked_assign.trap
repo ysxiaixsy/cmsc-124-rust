@@ -1,0 +1,4 @@
+locked x = 1;
+spittin x; // expect: 1
+x = 2; // expect runtime error: Can't assign to locked 'x'.
+spittin "not reached";

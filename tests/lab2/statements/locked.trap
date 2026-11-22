@@ -1,0 +1,2 @@
+locked x = 1 + 2;
+{ locked y = x; }

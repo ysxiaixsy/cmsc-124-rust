@@ -1,0 +1,35 @@
+// a stash is shared, not copied: a second name holds the same stash
+hold a = stash();
+hold b = a;
+stack(b, "hi");
+spittin a; // expect: ["hi"]
+spittin a == b; // expect: nocap
+// two stashes with the same contents are still two stashes
+hold c = stash();
+stack(c, "hi");
+spittin a == c; // expect: cap
+// a motion handed a stash changes the caller's stash
+motion add_bonus(bag) {
+  stack(bag, 100);
+}
+add_bonus(a);
+spittin a; // expect: ["hi", 100]
+// each call to stash() makes a new one
+motion fresh() {
+  typeshi stash();
+}
+spittin fresh() == fresh(); // expect: cap
+// a closure keeps its stash between calls, and each factory call makes its own
+motion make_log() {
+  hold entries = stash();
+  motion log(entry) {
+    stack(entries, entry);
+    typeshi size(entries);
+  }
+  typeshi log;
+}
+hold first = make_log();
+hold second = make_log();
+spittin first("a"); // expect: 1
+spittin first("b"); // expect: 2
+spittin second("x"); // expect: 1

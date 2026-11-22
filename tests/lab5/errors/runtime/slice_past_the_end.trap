@@ -1,0 +1,3 @@
+// a position past the end is an error, not cut down to fit
+spittin slice("trap", 0, 4); // expect: trap
+spittin slice("trap", 2, 9); // expect runtime error: Can't slice 2 to 9 from a string of 4 characters.
