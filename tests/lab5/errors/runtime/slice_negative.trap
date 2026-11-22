@@ -1,0 +1,1 @@
+slice("trap", -1, 2); // expect runtime error: Slice positions must be whole numbers.

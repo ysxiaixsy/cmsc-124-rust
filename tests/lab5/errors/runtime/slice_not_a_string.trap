@@ -1,0 +1,1 @@
+slice(5, 0, 1); // expect runtime error: First argument to slice must be a string.

@@ -1,0 +1,13 @@
+// slice(text, from, to) is the characters from position from up to, not including, to.
+// positions count from 0
+hold word = "trapscript";
+spittin slice(word, 0, 4); // expect: trap
+spittin slice(word, 4, size(word)); // expect: script
+spittin slice(word, 0, size(word)); // expect: trapscript
+spittin slice(word, 9, 10); // expect: t
+// equal positions are the empty string
+spittin slice(word, 3, 3) == ""; // expect: nocap
+// positions count characters, not bytes
+spittin slice("é!", 1, 2); // expect: !
+// the original string is untouched
+spittin word; // expect: trapscript
