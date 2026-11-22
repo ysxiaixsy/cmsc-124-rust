@@ -20,6 +20,21 @@ const NATIVES: &[Native] = &[
         arity: 1,
         run: sayit,
     },
+    Native {
+        name: "size",
+        arity: 1,
+        run: size,
+    },
+    Native {
+        name: "slice",
+        arity: 3,
+        run: slice,
+    },
+    Native {
+        name: "has",
+        arity: 2,
+        run: has,
+    },
 ];
 
 // the global scope a program starts in: empty except for the natives, which are bound before
@@ -85,4 +100,55 @@ fn digits(arguments: &[Value]) -> Result<Value, String> {
 // purpose, and the conversion happens nowhere else. a string comes back as it went in
 fn sayit(arguments: &[Value]) -> Result<Value, String> {
     Ok(Value::String(arguments[0].to_string()))
+}
+
+// size(text): how many characters a string has. characters, not bytes, so "é" is 1
+fn size(arguments: &[Value]) -> Result<Value, String> {
+    match &arguments[0] {
+        Value::String(text) => Ok(Value::Number(text.chars().count() as f64)),
+        _ => Err("Argument to size must be a string.".to_string()),
+    }
+}
+
+// slice(text, from, to): the characters from position `from` up to, but not including,
+// position `to`. positions count from 0, so slice(text, 0, size(text)) is the whole string.
+// bounds that don't fit are an error, not quietly cut down to fit: a program that asks for
+// characters that aren't there has a bug, and handing back fewer would hide it
+fn slice(arguments: &[Value]) -> Result<Value, String> {
+    let Value::String(text) = &arguments[0] else {
+        return Err("First argument to slice must be a string.".to_string());
+    };
+    let (Some(from), Some(to)) = (position(&arguments[1]), position(&arguments[2])) else {
+        return Err("Slice positions must be whole numbers.".to_string());
+    };
+    let length = text.chars().count();
+    if from > to || to > length {
+        return Err(format!(
+            "Can't slice {from} to {to} from a string of {length} characters."
+        ));
+    }
+    Ok(Value::String(
+        text.chars().skip(from).take(to - from).collect(),
+    ))
+}
+
+// has(text, part): whether part appears anywhere in text. every string has the empty string
+fn has(arguments: &[Value]) -> Result<Value, String> {
+    match (&arguments[0], &arguments[1]) {
+        (Value::String(text), Value::String(part)) => {
+            Ok(Value::Boolean(text.contains(part.as_str())))
+        }
+        _ => Err("Arguments to has must be two strings.".to_string()),
+    }
+}
+
+// a number that can name a position: whole and not negative. 1.5 and -1 name nothing, and
+// rounding them would pick a position the program never asked for
+fn position(value: &Value) -> Option<usize> {
+    match value {
+        Value::Number(number) if *number >= 0.0 && number.fract() == 0.0 && number.is_finite() => {
+            Some(*number as usize)
+        }
+        _ => None,
+    }
 }
