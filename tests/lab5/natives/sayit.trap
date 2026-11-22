@@ -1,0 +1,19 @@
+// sayit turns any value into the text spittin would show for it, so a number can be joined
+// onto a string on purpose. + itself still refuses to mix them
+spittin "score: " + sayit(10); // expect: score: 10
+spittin sayit(2.5) + "!"; // expect: 2.5!
+spittin sayit(-3); // expect: -3
+spittin sayit(nocap) + " / " + sayit(cap); // expect: nocap / cap
+spittin sayit(nil); // expect: nil
+// a string comes back unchanged
+spittin sayit("already text"); // expect: already text
+// the result is a string: it joins with + and equals the text, not the number
+spittin sayit(1) + sayit(2); // expect: 12
+spittin sayit(1) == "1"; // expect: nocap
+spittin sayit(1) == 1; // expect: cap
+// motions and natives say what spittin shows for them
+motion go() {}
+spittin sayit(go); // expect: <motion go>
+spittin sayit(sayit); // expect: <native sayit>
+// sayit and digits undo each other for a number
+spittin digits(sayit(42)) + 1; // expect: 43
