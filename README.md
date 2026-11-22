@@ -832,3 +832,34 @@ as a value and every spelling `digits` accepts and rejects. `tests/lab5/errors/r
 both arity errors and `digits` given a number.
 
 `pause` and `locked` are still to come.
+
+### Lab 5 Week 3 progress
+
+The Week 3 checklist was already met by Week 2's work: results reaching the caller
+(`functions/results.trap`, `typeshi_unwinds.trap`), functions passed and returned
+(`functions/first_class.trap`), independent captures from one factory and loop capture
+(`functions/closures.trap`), both natives, arity errors for motions and natives, and
+`examples/functions.trap`, with all six folders green in CI.
+
+This week finishes the vocabulary that was reserved but unusable, and adds what a real
+program needs. Every addition keeps the language's rule that nothing is converted, filled
+in, or cut down behind the program's back.
+
+- `pause` ends the nearest `spin`. It is a third kind of statement result alongside finishing
+  and returning, so it unwinds the same way `typeshi` does but stops at the loop instead of
+  the call. The parser rejects one outside a `spin`, and a motion body starts outside any loop.
+- `locked` declares a binding that can't be assigned or redeclared in its scope. The lock is
+  kept beside the scope's map, on the binding rather than the name, so shadowing still works.
+- `sayit` turns any value into its text. `+` still refuses to mix a number and a string, so a
+  number joins a sentence only when the program asks for it.
+- `size`, `slice`, and `has` read text. Positions must be whole and must fit; nothing is
+  rounded or clipped.
+- The stash is the first collection, and the first value that can change after it is made,
+  so it is shared by reference like a function. `stash`, `stack`, `grab`, and `put` build,
+  grow, read, and replace; `size` counts. A missing position is an error rather than `nil`.
+
+`tests/lab5/repetition/` and `tests/lab5/locked/` cover `pause` and `locked`,
+`tests/lab5/natives/` covers `sayit` and the text tools, and `tests/lab5/stash/` covers
+building, walking, sharing, capturing, and nesting stashes. `tests/lab5/errors/` gains one
+file per new rejection, and `tests/lab2/statements/` gains the `(pause)` and `(locked ...)`
+parse output.
