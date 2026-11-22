@@ -1,0 +1,16 @@
+// a stash can hold stashes
+hold grid = stash();
+stack(grid, stash());
+stack(grid, stash());
+stack(grab(grid, 0), 1);
+stack(grab(grid, 1), 2);
+stack(grab(grid, 1), 3);
+spittin grid; // expect: [[1], [2, 3]]
+spittin grab(grab(grid, 1), 0); // expect: 2
+// a stash that holds itself prints [...] at that point instead of printing forever
+hold loop = stash();
+stack(loop, 1);
+stack(loop, loop);
+spittin loop; // expect: [1, [...]]
+spittin size(loop); // expect: 2
+spittin grab(loop, 1) == loop; // expect: nocap
