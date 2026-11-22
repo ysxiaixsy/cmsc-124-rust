@@ -163,16 +163,18 @@ Frozen as of Lab 1; changes are recorded in the changelog.
 
 ```
 program             → declaration* EOF
-declaration         → motionDeclaration | holdDeclaration | statement
+declaration         → motionDeclaration | holdDeclaration | lockedDeclaration | statement
 motionDeclaration   → "motion" IDENTIFIER "(" parameters? ")" block
 parameters          → IDENTIFIER ( "," IDENTIFIER )*
 holdDeclaration     → "hold" IDENTIFIER ( "=" expression )? ";"
-statement           → block | ongStatement | spinStatement | returnStatement | printStatement
-                    | expressionStatement
+lockedDeclaration   → "locked" IDENTIFIER "=" expression ";"
+statement           → block | ongStatement | spinStatement | pauseStatement | returnStatement
+                    | printStatement | expressionStatement
 block               → "{" declaration* "}"
 ongStatement        → "ong" "(" expression ")" statement
                       ( "wait" "(" expression ")" statement )* ( "nah" statement )?
 spinStatement       → "spin" "(" expression ")" statement
+pauseStatement      → "pause" ";"
 returnStatement     → "typeshi" expression? ";"
 printStatement      → "spittin" expression ";"
 expressionStatement → expression ";"
@@ -201,6 +203,8 @@ primary    → NUM | DEC | STRING | "nocap" | "cap" | "nil" | IDENTIFIER | "(" e
 - **Functions:** `motion` is a declaration like `hold`, so it is legal wherever a statement is, including inside a block or another motion. The body must be a block. Parameter names must be identifiers and must differ from each other: `motion f(a, a) {}` is a syntax error.
 - **Calls:** a call is a postfix on any primary, and the rule loops, so a call's result can be called in turn: `f(1)(2)`. Calls bind tighter than unary operators, so `-f(x)` negates the result. An argument is any expression, including an assignment. A call is not an assignment target: `f() = 1;` is rejected with exit `65`.
 - **`typeshi`** takes an optional expression and is only legal inside a motion body. Anywhere else, including a block or a loop at the top level, is a syntax error, so the file is rejected before it runs.
+- **`pause`** is only legal inside a `spin` body, at any depth of blocks and `ong`s within it. A motion body starts with no loops around it, even when the `motion` declaration itself sits inside a `spin`, because a `pause` in the body would run during a call, not during that loop. Anywhere else is the syntax error `Can't use 'pause' outside a spin.`, exit `65`.
+- **`locked`** declares like `hold`, but the value is required: a locked name can never be assigned later, so one declared without a value would be stuck at `nil`. `locked x;` is the syntax error `Expect '=' after locked name.`, exit `65`.
 - The rules go from loosest-binding (`assignment`) to tightest (`primary`), and each rule only calls the one below it. That is what makes `!` bind tighter than `==`: `!nocap == cap` parses as `(== (! nocap) cap)`.
 - The `( ... )*` loops make every binary operator left-associative: `1 != 2 != 3` parses as `(!= (!= 1.0 2.0) 3.0)`.
 - `unary` calls itself, so unary operators chain and group from the right: `!!nocap` parses as `(! (! nocap))`.
@@ -226,7 +230,7 @@ The program root is not printed as a wrapper. The printer visits its statement c
 That is the output for `(1 == 2) != !cap`.
 
 - One line per statement, in prefix form: the operator comes first, then its operands.
-- Statements with a keyword lead with it: `(spittin 1.0)`, `(hold x 1.0)`, and `(hold x)` when there is no initializer.
+- Statements with a keyword lead with it: `(spittin 1.0)`, `(hold x 1.0)`, and `(hold x)` when there is no initializer. `locked x = 1;` prints as `(locked x 1.0)` and `pause;` as `(pause)`.
 - Names print bare, and assignment prints as an operator: `(= x (+ x 1.0))`.
 - A block prints on one line with its statements in order: `{ hold x = 1; spittin x; }` prints as `(block (hold x 1.0) (spittin x))`, and `{}` prints as `(block)`.
 - A motion prints its name, its parameters in their own parentheses, and its body as a block: `motion add(a, b) { typeshi a + b; }` prints as `(motion add (a b) (block (typeshi (+ a b))))`. With no parameters the slot stays, as `()`. A bare `typeshi;` prints as `(typeshi)`.
