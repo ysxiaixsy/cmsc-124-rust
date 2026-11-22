@@ -1,0 +1,1 @@
+has("1234", 1); // expect runtime error: Arguments to has must be two strings.
