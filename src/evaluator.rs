@@ -132,7 +132,13 @@ impl Interpreter<'_> {
                     Some(expr) => self.evaluate_expression(expr, environment)?,
                     None => Value::Nil,
                 };
-                environment.define(&name.lexeme, value);
+                environment.declare(name, value, false)?;
+            }
+            // the same as a hold, except that the binding it makes refuses every later
+            // assignment and redeclaration
+            Stmt::Locked { name, value } => {
+                let value = self.evaluate_expression(value, environment)?;
+                environment.declare(name, value, true)?;
             }
             // a declaration is a hold whose value is a function. the function keeps the scope
             // it was declared in, and that scope now holds the function's own name, which is
@@ -142,10 +148,11 @@ impl Interpreter<'_> {
                     declaration: Rc::clone(declaration),
                     closure: environment.clone(),
                 };
-                environment.define(
-                    &declaration.name.lexeme,
+                environment.declare(
+                    &declaration.name,
                     Value::Function(Rc::new(function)),
-                );
+                    false,
+                )?;
             }
             Stmt::Return(value) => {
                 let value = match value {

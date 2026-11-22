@@ -20,6 +20,9 @@ fn print_statement(statement: &Stmt) -> String {
             name,
             initializer: None,
         } => format!("(hold {})", name.lexeme),
+        Stmt::Locked { name, value } => {
+            format!("(locked {} {})", name.lexeme, print_expression(value))
+        }
         Stmt::Block(statements) => print_block(statements),
         // the name, then the parameters in their own parentheses so a motion with none still
         // shows the slot, then the body: (motion add (a b) (block (typeshi (+ a b))))

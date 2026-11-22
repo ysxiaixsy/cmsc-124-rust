@@ -81,13 +81,16 @@ impl Parser {
         }
     }
 
-    // declaration -> motionDeclaration | holdDeclaration | statement
+    // declaration -> motionDeclaration | holdDeclaration | lockedDeclaration | statement
     fn declaration(&mut self) -> Result<Stmt, ParseError> {
         if self.match_types(&[Tokentypes::Motion]) {
             return self.motion_declaration();
         }
         if self.match_types(&[Tokentypes::Hold]) {
             return self.hold_declaration();
+        }
+        if self.match_types(&[Tokentypes::Locked]) {
+            return self.locked_declaration();
         }
         self.statement()
     }
@@ -179,6 +182,20 @@ impl Parser {
 
         self.consume(Tokentypes::Semicolon, "Expect ';' after variable declaration.")?;
         Ok(Stmt::Hold { name, initializer })
+    }
+
+    // lockedDeclaration -> "locked" IDENTIFIER "=" expression ";"
+    // the value is required where hold's is optional: a locked name can never be assigned
+    // later, so one declared without a value would be stuck at nil for good
+    fn locked_declaration(&mut self) -> Result<Stmt, ParseError> {
+        self.consume(Tokentypes::Identifier, "Expect variable name.")?;
+        let name = self.previous().clone();
+
+        self.consume(Tokentypes::Equal, "Expect '=' after locked name.")?;
+        let value = self.expression()?;
+
+        self.consume(Tokentypes::Semicolon, "Expect ';' after variable declaration.")?;
+        Ok(Stmt::Locked { name, value })
     }
 
     // statement -> block | ongStatement | spinStatement | pauseStatement | returnStatement
@@ -656,8 +673,8 @@ impl Parser {
     }
 
     // skip past the failed statement to the next place a statement can begin: just after a
-    // semicolon, or just before a token that starts a statement (`hold`, `motion`, `typeshi`,
-    // `pause`, `spittin`, `{`) or ends a block (`}`). stopping before `}` is what lets the enclosing
+    // semicolon, or just before a token that starts a statement (`hold`, `locked`, `motion`,
+    // `typeshi`, `pause`, `spittin`, `{`) or ends a block (`}`). stopping before `}` is what lets the enclosing
     // block still close.
     // a delimiter already consumed by the failed production is also a recovery boundary
     fn synchronize(&mut self, statement_start: usize) {
@@ -675,6 +692,7 @@ impl Parser {
         while !self.is_at_end() {
             match self.peek().token_type {
                 Tokentypes::Hold
+                | Tokentypes::Locked
                 | Tokentypes::Motion
                 | Tokentypes::Typeshi
                 | Tokentypes::Pause
