@@ -1,0 +1,8 @@
+// size counts the characters in a string
+spittin size("hello"); // expect: 5
+spittin size(""); // expect: 0
+spittin size("no cap"); // expect: 6
+// characters, not bytes: é is one character stored in two bytes
+spittin size("é"); // expect: 1
+// a number is not text, so it is said first
+spittin size(sayit(1234)); // expect: 4
