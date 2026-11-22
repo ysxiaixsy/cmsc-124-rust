@@ -1,0 +1,1 @@
+grab(stash(), 0); // expect runtime error: Position 0 is out of range for a stash of 0.

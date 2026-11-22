@@ -1,0 +1,3 @@
+// put only replaces. stack is the one way a stash grows, so a wrong position cannot leave a gap
+hold s = stash();
+put(s, 0, 1); // expect runtime error: Position 0 is out of range for a stash of 0.

@@ -1,0 +1,1 @@
+stack("text", 1); // expect runtime error: First argument to stack must be a stash.

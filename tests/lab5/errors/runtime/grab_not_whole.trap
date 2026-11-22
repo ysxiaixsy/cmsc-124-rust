@@ -1,0 +1,3 @@
+hold s = stash();
+stack(s, 1);
+grab(s, 0.5); // expect runtime error: Stash positions must be whole numbers.
