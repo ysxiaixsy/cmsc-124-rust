@@ -47,10 +47,13 @@ pub enum Output {
 }
 
 // how a statement finished. a typeshi has to end every block and loop between itself and its
-// call, so each of them hands this back up instead of carrying on
+// call, and a pause every block between itself and its spin, so each of them hands this back
+// up instead of carrying on
 enum Flow {
     // ran to its end: the next statement goes ahead
     Next,
+    // a pause ran: stop, and let the nearest spin end
+    Break,
     // a typeshi ran: stop, and give this value to the call
     Return(Value),
 }
@@ -89,15 +92,16 @@ struct Interpreter<'a> {
 
 impl Interpreter<'_> {
     // statements run in source order. the first runtime error stops the rest, and so does the
-    // first typeshi
+    // first typeshi or pause
     fn execute_all(
         &mut self,
         statements: &[Stmt],
         environment: &Environment,
     ) -> Result<Flow, RuntimeError> {
         for statement in statements {
-            if let Flow::Return(value) = self.execute(statement, environment)? {
-                return Ok(Flow::Return(value));
+            match self.execute(statement, environment)? {
+                Flow::Next => {}
+                stopped => return Ok(stopped),
             }
         }
         Ok(Flow::Next)
@@ -150,6 +154,7 @@ impl Interpreter<'_> {
                 };
                 return Ok(Flow::Return(value));
             }
+            Stmt::Pause => return Ok(Flow::Break),
             // only the chosen branch is executed. the other one is never walked, so a runtime
             // error sitting in it cannot fire
             Stmt::Ong {
@@ -164,12 +169,15 @@ impl Interpreter<'_> {
                 }
             }
             // the condition is re-evaluated before every pass, so a body that changes what the
-            // condition reads is what eventually stops the loop. a typeshi in the body stops
-            // it too, on its way out of the call
+            // condition reads is what eventually stops the loop. a pause in the body stops it
+            // as well and goes no further: the spin has ended, so the statement after it runs.
+            // a typeshi stops it too, on its way out of the call
             Stmt::Spin { condition, body } => {
                 while is_truthy(&self.evaluate_expression(condition, environment)?) {
-                    if let Flow::Return(value) = self.execute(body, environment)? {
-                        return Ok(Flow::Return(value));
+                    match self.execute(body, environment)? {
+                        Flow::Next => {}
+                        Flow::Break => break,
+                        Flow::Return(value) => return Ok(Flow::Return(value)),
                     }
                 }
             }
@@ -345,10 +353,11 @@ impl Interpreter<'_> {
             scope.define(&param.lexeme, argument);
         }
 
-        // running off the end of the body is the same as a bare `typeshi;`
+        // running off the end of the body is the same as a bare `typeshi;`. the parser only
+        // allows a pause inside a spin of the same body, so one can never reach this far
         match self.execute_all(&declaration.body, &scope)? {
             Flow::Return(value) => Ok(value),
-            Flow::Next => Ok(Value::Nil),
+            Flow::Next | Flow::Break => Ok(Value::Nil),
         }
     }
 }

@@ -37,6 +37,8 @@ pub enum Stmt {
     Motion(Rc<FunctionDecl>),
     // typeshi: ends the call it runs in. no expression means the call produces nil
     Return(Option<Expr>),
+    // pause: ends the nearest spin around it, and nothing further out
+    Pause,
 }
 
 // the source value a literal node holds
