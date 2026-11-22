@@ -1,0 +1,4 @@
+// a second declaration in the same scope would replace the binding, which is the one thing
+// locking it rules out
+locked x = 1;
+hold x = 2; // expect runtime error: Can't redeclare locked 'x'.

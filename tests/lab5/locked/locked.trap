@@ -1,0 +1,17 @@
+// a locked binding reads like any other
+locked rate = 3;
+spittin rate; // expect: 3
+spittin rate * 2; // expect: 6
+
+// its value is worked out once, when the declaration runs. changing what it was built from
+// afterwards does not reach it
+hold base = 10;
+locked total = base + rate;
+base = 100;
+spittin total; // expect: 13
+
+// a held name can be locked later in the same scope, and the initializer still reads the
+// old value first
+hold count = 1;
+locked count = count + 1;
+spittin count; // expect: 2

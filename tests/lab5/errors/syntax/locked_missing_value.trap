@@ -1,0 +1,2 @@
+// a locked name can never be assigned later, so it has to be declared with its value
+locked x; // expect error: Expect '=' after locked name.

@@ -1,0 +1,17 @@
+// locking a name locks one binding, not the name everywhere. an inner block can declare its
+// own, change it freely, and the locked one is back when the block ends
+locked x = "outer";
+{
+  hold x = "inner";
+  x = "changed";
+  spittin x; // expect: changed
+}
+spittin x; // expect: outer
+
+// a parameter is a new binding too, so it can be assigned inside the call
+motion shout(x) {
+  x = x + "!";
+  typeshi x;
+}
+spittin shout("param"); // expect: param!
+spittin x; // expect: outer
