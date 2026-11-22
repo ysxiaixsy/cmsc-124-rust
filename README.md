@@ -246,7 +246,7 @@ That is the output for `(1 == 2) != !cap`.
 ### Values and types
 
 Runtime values use a Rust tagged union, `Value`, with `Number(f64)`,
-`String(String)`, `Boolean(bool)`, `Nil`, `Function`, and `Native` variants. One return type can hold
+`String(String)`, `Boolean(bool)`, `Nil`, `Function`, `Native`, and `Stash` variants. One return type can hold
 any TrapScript value; matching a variant checks its type and extracts its data.
 This fits Rust's exhaustive pattern matching and the scanner's existing `f64`
 representation without downcasting or adding a second numeric type.
@@ -254,6 +254,12 @@ representation without downcasting or adding a second numeric type.
 A function value is a shared reference to the `motion` declaration plus the scope
 that declaration ran in. Binding it to a second name copies the reference, so both
 names call the same function.
+
+A stash is an ordered collection of any values, made with `stash()` and changed with
+`stack` and `put` (see Native functions). It is shared the same way a function is:
+binding it to a second name or passing it to a motion hands over the same stash, so a
+change made through one name is seen through every other. It is the only value that can
+change after it is made, which is why it is the only one shared rather than copied.
 
 AST `Literal` describes source syntax; `Value` also represents computed results.
 The evaluator converts literals to values and recursively evaluates child nodes
@@ -276,11 +282,12 @@ Operators that need numbers share one check, so they report the same diagnostic.
 - Strings: contents without quotes, preserving spaces and line breaks.
 - Booleans: `nocap` and `cap`.
 - Functions: `<motion name>`, with the name from the declaration even when the value is bound to another name. A native function prints as `<native name>`.
+- Stashes: their items in brackets, separated by `, `: `[1, "two", nocap, nil]`. A string inside a stash keeps its quotes, so `["1"]` and `[1]` look different. A stash that holds itself prints `[...]` at that point instead of printing forever.
 - Parse output keeps its existing debug representation, including `5.0` and quoted strings.
 
 ### Truthiness
 
-Only `cap` and `nil` are falsey; all other values, including zero, the empty string, and every function, are truthy. The rule lives in one function, so `!`, the conditionals, and the logical operators all answer the same way. `!` takes any value and never reports a type error. `tests/lab3/values/truthiness.trap` is the executable statement of this rule.
+Only `cap` and `nil` are falsey; all other values, including zero, the empty string, every function, and every stash, empty or not, are truthy. The rule lives in one function, so `!`, the conditionals, and the logical operators all answer the same way. `!` takes any value and never reports a type error. `tests/lab3/values/truthiness.trap` is the executable statement of this rule.
 
 ### Operator semantics
 
@@ -290,6 +297,7 @@ Only `cap` and `nil` are falsey; all other values, including zero, the empty str
 - Comparison: numbers only, on both sides; anything else is a runtime error. Returns a boolean.
 - Equality across types: any pair of values, comparing the type first, so `1 == "1"` is `cap` rather than an error. `nil` equals only `nil`, so `nil == cap` is `cap` even though both are falsey.
 - Equality of functions: by identity. A function equals itself under any name it is bound to. Two declarations with the same text are different functions, and so are the two functions made by running one declaration twice.
+- Equality of stashes: by identity, like functions. A stash equals itself under any name, and two stashes with the same items are still unequal. Comparing items would also never finish on a stash that holds itself.
 - Division by zero: runtime error, including negative zero.
 - `||` and `&&`: any operands, never a type error. `||` evaluates its left operand and produces it if it is truthy; otherwise it evaluates and produces its right operand. `&&` produces its left operand if that is falsey, and otherwise its right. See Control flow and functions.
 
@@ -308,7 +316,7 @@ Only `cap` and `nil` are falsey; all other values, including zero, the empty str
 - Binding time: a name binds to storage and to its first value when `hold` executes, and to a new value at each assignment. Its type is never declared; it follows whichever value it currently holds.
 - Scope against lifetime: a block's binding can be named from its `hold` to the block's `}`. Its storage exists while that block is running and is released when the block exits, so reading it after the `}` is `Undefined variable`. A shadowed binding shows the difference: it is alive inside the inner block but cannot be named there.
 - Storage lifetime: a global binding lasts from the moment `hold` executes until the program ends, or until the session ends in the REPL, so it is static storage in the sense of lasting for the program. A block's bindings are stack-dynamic: created when their `hold` runs and released when the block exits, including when it exits through a runtime error. A call's parameters and locals behave the same way and are released when the call returns. The one exception is a scope that a function was declared in: the function keeps that scope, so its bindings live for as long as the function can still be called, which is what makes closures work. Environments are reference-counted to allow this.
-- Values are copied on binding: after `hold b = a;`, assigning to `a` leaves `b` unchanged.
+- Values are copied on binding: after `hold b = a;`, assigning to `a` leaves `b` unchanged. A stash is the exception: `b` holds the same stash, so `stack(a, 1)` is seen through `b`. Assigning a different value to `a` still leaves `b` alone.
 - Undefined name: runtime error with exit 70 and `Undefined variable 'a'.`, for both reading and assigning. The check happens when the name is evaluated, so code that never runs never reports, and mutually recursive functions need no separate resolution pass: a body can mention a function declared further down, as long as that declaration has run by the time of the call. The right side of an assignment runs first, so `z = 1 / 0;` reports the division by zero even if `z` is undefined.
 
 ### Control flow and functions
@@ -319,7 +327,7 @@ Only `cap` and `nil` are falsey; all other values, including zero, the empty str
 - Locals across calls: every call gets a new environment, so a `hold` in a body starts over on each call. State that should persist lives outside the call, in a global or in a captured scope. `tests/lab5/functions/fresh_locals.trap` shows both, and that a caller's bindings are intact after the callee returns early.
 - Declaring a function: `motion name(params) { ... }` binds `name` in the innermost environment, exactly as `hold` would, to a new function value. It can sit inside a block or another function, and a later declaration of the same name in the same scope replaces the earlier one. Nothing in the body runs until a call.
 - Functions are values: a function can be printed, bound to another name, passed as an argument, and returned as a result.
-- Calling: the callee is evaluated, then each argument from left to right, then the callee is checked. Each argument is bound to the parameter in its position, in a new environment that the body's statements also run in, so a parameter and a `hold` in the body share one scope. Arguments are passed by value for numbers, strings, booleans, and `nil`, and by reference for functions.
+- Calling: the callee is evaluated, then each argument from left to right, then the callee is checked. Each argument is bound to the parameter in its position, in a new environment that the body's statements also run in, so a parameter and a `hold` in the body share one scope. Arguments are passed by value for numbers, strings, booleans, and `nil`, and by reference for functions and stashes, so a motion handed a stash can change the caller's stash. Assigning to the parameter itself never reaches the caller.
 - `typeshi` ends the call it runs in and gives the call its value, from however many blocks, `ong`s, and `spin`s it sits inside. A `typeshi;` with no expression gives `nil`.
 - `pause` ends the nearest `spin` around it and nothing further out: in nested loops only the inner one stops, and the statement after that loop runs next. Like `typeshi`, it passes up through every block and `ong` between itself and its loop, so the rest of the body is skipped. `tests/lab5/repetition/pause*.trap` cover a single loop, nested loops, and a loop inside a motion.
 - Function with no return statement produces: `nil`.
