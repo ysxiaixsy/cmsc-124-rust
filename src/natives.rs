@@ -15,6 +15,11 @@ const NATIVES: &[Native] = &[
         arity: 1,
         run: digits,
     },
+    Native {
+        name: "sayit",
+        arity: 1,
+        run: sayit,
+    },
 ];
 
 // the global scope a program starts in: empty except for the natives, which are bound before
@@ -73,4 +78,11 @@ fn digits(arguments: &[Value]) -> Result<Value, String> {
         Ok(number) if number.is_finite() => Ok(Value::Number(number)),
         _ => Ok(Value::Nil),
     }
+}
+
+// sayit(value): the text spittin would print for the value, as a string. + never turns a
+// number into text by itself, so this is how a program joins one onto a string: it asks, on
+// purpose, and the conversion happens nowhere else. a string comes back as it went in
+fn sayit(arguments: &[Value]) -> Result<Value, String> {
+    Ok(Value::String(arguments[0].to_string()))
 }
