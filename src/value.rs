@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
 
@@ -14,6 +15,39 @@ pub enum Value {
     Function(Rc<Function>),
     // a function the interpreter supplies, such as spill
     Native(Native),
+    // an ordered collection of values. shared, like a function: binding a stash to a second
+    // name, or passing it to a motion, hands over the same stash, so a change made through
+    // one name is seen through the other
+    Stash(Rc<Stash>),
+}
+
+// the values a stash holds, in the order they were stacked. the RefCell is what lets stack and
+// put change a stash that several names share
+pub struct Stash {
+    pub items: RefCell<Vec<Value>>,
+}
+
+impl Stash {
+    pub fn new() -> Self {
+        Self {
+            items: RefCell::new(Vec::new()),
+        }
+    }
+}
+
+// two stashes are equal only when they are the same stash, the same rule functions follow.
+// comparing contents would also loop forever on a stash that holds itself
+impl PartialEq for Stash {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self, other)
+    }
+}
+
+// written by hand for the same reason as Function's: a stash can hold itself
+impl fmt::Debug for Stash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<stash of {}>", self.items.borrow().len())
+    }
 }
 
 // a function written in Rust instead of TrapScript. it is called exactly like a motion and
@@ -66,14 +100,44 @@ impl fmt::Debug for Function {
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Value::Number(value) => write!(f, "{value}"),
-            Value::String(value) => write!(f, "{value}"),
-            Value::Boolean(true) => write!(f, "nocap"),
-            Value::Boolean(false) => write!(f, "cap"),
-            Value::Nil => write!(f, "nil"),
-            Value::Function(function) => write!(f, "{function:?}"),
-            Value::Native(native) => write!(f, "{native:?}"),
+        write_value(self, f, &mut Vec::new())
+    }
+}
+
+// a stash prints as its items in brackets: [1, "two", nocap]. a string inside one keeps its
+// quotes, so ["1"] and [1] look different. `open` holds the stashes being printed right now,
+// so one that holds itself prints [...] at that point instead of printing forever
+fn write_value(
+    value: &Value,
+    f: &mut fmt::Formatter<'_>,
+    open: &mut Vec<*const Stash>,
+) -> fmt::Result {
+    match value {
+        Value::Number(value) => write!(f, "{value}"),
+        Value::String(value) => write!(f, "{value}"),
+        Value::Boolean(true) => write!(f, "nocap"),
+        Value::Boolean(false) => write!(f, "cap"),
+        Value::Nil => write!(f, "nil"),
+        Value::Function(function) => write!(f, "{function:?}"),
+        Value::Native(native) => write!(f, "{native:?}"),
+        Value::Stash(stash) => {
+            let address = Rc::as_ptr(stash);
+            if open.contains(&address) {
+                return write!(f, "[...]");
+            }
+            open.push(address);
+            write!(f, "[")?;
+            for (index, item) in stash.items.borrow().iter().enumerate() {
+                if index > 0 {
+                    write!(f, ", ")?;
+                }
+                match item {
+                    Value::String(text) => write!(f, "{text:?}")?,
+                    _ => write_value(item, f, open)?,
+                }
+            }
+            open.pop();
+            write!(f, "]")
         }
     }
 }

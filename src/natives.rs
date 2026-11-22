@@ -1,7 +1,8 @@
 use std::io;
+use std::rc::Rc;
 
 use crate::environment::Environment;
-use crate::value::{Native, Value};
+use crate::value::{Native, Stash, Value};
 
 // every native function the language has. adding one is a function below and a line here
 const NATIVES: &[Native] = &[
@@ -34,6 +35,26 @@ const NATIVES: &[Native] = &[
         name: "has",
         arity: 2,
         run: has,
+    },
+    Native {
+        name: "stash",
+        arity: 0,
+        run: stash,
+    },
+    Native {
+        name: "stack",
+        arity: 2,
+        run: stack,
+    },
+    Native {
+        name: "grab",
+        arity: 2,
+        run: grab,
+    },
+    Native {
+        name: "put",
+        arity: 3,
+        run: put,
     },
 ];
 
@@ -102,11 +123,13 @@ fn sayit(arguments: &[Value]) -> Result<Value, String> {
     Ok(Value::String(arguments[0].to_string()))
 }
 
-// size(text): how many characters a string has. characters, not bytes, so "é" is 1
+// size(text) or size(stash): how many characters a string has, or how many values a stash
+// holds. characters, not bytes, so "é" is 1
 fn size(arguments: &[Value]) -> Result<Value, String> {
     match &arguments[0] {
         Value::String(text) => Ok(Value::Number(text.chars().count() as f64)),
-        _ => Err("Argument to size must be a string.".to_string()),
+        Value::Stash(stash) => Ok(Value::Number(stash.items.borrow().len() as f64)),
+        _ => Err("Argument to size must be a string or a stash.".to_string()),
     }
 }
 
@@ -151,4 +174,59 @@ fn position(value: &Value) -> Option<usize> {
         }
         _ => None,
     }
+}
+
+// stash(): a new, empty stash. every call makes a separate one
+fn stash(_arguments: &[Value]) -> Result<Value, String> {
+    Ok(Value::Stash(Rc::new(Stash::new())))
+}
+
+// stack(stash, value): puts value on the end of the stash. it changes the stash itself, which
+// every name holding it will see, and answers nil: the change is the point, not a result
+fn stack(arguments: &[Value]) -> Result<Value, String> {
+    let stash = stash_argument(&arguments[0], "stack")?;
+    stash.items.borrow_mut().push(arguments[1].clone());
+    Ok(Value::Nil)
+}
+
+// grab(stash, position): the value at that position, counting from 0. a position with nothing
+// there is an error, not nil: nil could be a value the program stacked, and the two must not
+// look the same
+fn grab(arguments: &[Value]) -> Result<Value, String> {
+    let stash = stash_argument(&arguments[0], "grab")?;
+    let items = stash.items.borrow();
+    let index = stash_position(&arguments[1], items.len())?;
+    Ok(items[index].clone())
+}
+
+// put(stash, position, value): replaces the value at a position that already holds one. it
+// never grows the stash, so a typo'd position can't leave a gap of nothing behind it; stack
+// is the only way to add
+fn put(arguments: &[Value]) -> Result<Value, String> {
+    let stash = stash_argument(&arguments[0], "put")?;
+    let mut items = stash.items.borrow_mut();
+    let index = stash_position(&arguments[1], items.len())?;
+    items[index] = arguments[2].clone();
+    Ok(Value::Nil)
+}
+
+// every stash native checks its first argument here, so the message names the native called
+fn stash_argument<'a>(value: &'a Value, native: &str) -> Result<&'a Rc<Stash>, String> {
+    match value {
+        Value::Stash(stash) => Ok(stash),
+        _ => Err(format!("First argument to {native} must be a stash.")),
+    }
+}
+
+// a position that holds a value: whole, not negative, and less than the stash's size
+fn stash_position(value: &Value, length: usize) -> Result<usize, String> {
+    let Some(index) = position(value) else {
+        return Err("Stash positions must be whole numbers.".to_string());
+    };
+    if index >= length {
+        return Err(format!(
+            "Position {index} is out of range for a stash of {length}."
+        ));
+    }
+    Ok(index)
 }
