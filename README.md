@@ -346,6 +346,14 @@ Only `cap` and `nil` are falsey; all other values, including zero, the empty str
 |---|---|---|---|
 | `spill` | none | a string, or `nil` | Reads the next line of standard input and returns it without its line ending (`\n` or `\r\n`). Nothing else is trimmed, so an empty line is `""`. Returns `nil` once the input has run out. The result is always a string, even when the line spells a number. Input that is not valid UTF-8 is a runtime error, exit `70`. |
 | `digits` | one string, or `nil` | a number, or `nil` | Returns the number the string spells, or `nil` when it does not spell one. The spelling is the one number literals use (`42`, `3.14`, `1.`), with spaces around it ignored and a leading `-` allowed. So `.5`, `1e3`, `+5`, `1.2.3`, `12abc`, `inf`, and `""` are all `nil`. `digits(nil)` is `nil`, so `digits(spill())` is `nil` at the end of the input. Any other argument (a number, a boolean, a function) is the runtime error `Argument to digits must be a string.`, exit `70`. |
+| `sayit` | any value | a string | Returns the text `spittin` would print for the value: `sayit(10)` is `"10"`, `sayit(nocap)` is `"nocap"`, and a string comes back unchanged. This is the only way a number becomes text, so `"score: " + sayit(10)` works while `"score: " + 10` is still a runtime error. `digits(sayit(n))` is `n` again. |
+| `size` | a string or a stash | a number | The number of characters in a string (characters, not bytes, so `size("é")` is `1`), or the number of values in a stash. Anything else is `Argument to size must be a string or a stash.` |
+| `slice` | a string, then two positions | a string | `slice(text, from, to)` is the characters from position `from` up to, not including, `to`, counting from `0`. `slice(text, 0, size(text))` is the whole string, and equal positions give `""`. Positions must be whole and not negative (`Slice positions must be whole numbers.`), and must fit: `slice("trap", 2, 9)` is `Can't slice 2 to 9 from a string of 4 characters.` rather than a shorter string. |
+| `has` | two strings | a boolean | Whether the second string appears anywhere in the first, matching case exactly. Every string has `""`. Anything other than two strings is `Arguments to has must be two strings.` |
+| `stash` | none | a new stash | Every call makes a separate, empty stash. |
+| `stack` | a stash, then any value | `nil` | Puts the value on the end of the stash, changing the stash itself. Answers `nil`, because the change is the point. |
+| `grab` | a stash, then a position | the value there | The value at that position, counting from `0`. A position with nothing there is `Position 3 is out of range for a stash of 3.`, not `nil`, because `nil` could be a value the program stacked. |
+| `put` | a stash, a position, then any value | `nil` | Replaces the value at a position that already holds one. It never grows the stash, so a wrong position is an error instead of a gap; `stack` is the only way to add. |
 
 ```
 hold total = 0;
@@ -367,6 +375,26 @@ for a line that is not a number and at the end of the input.
 - A native is a value: it prints as `<native spill>`, can be bound to another name or passed as an argument, is truthy, and equals only itself.
 - `digits` answers `nil` for a string that is not a number so that a program can check its input, and `nil` is the only falsey thing it returns: `digits("0")` is `0`, which is truthy, so `digits(text) || 10` supplies a default without swallowing a zero.
 - The names are not reserved. A program can shadow `spill` in a block or replace it with a `hold` or a `motion` of the same name.
+- Every native that takes a position (`slice`, `grab`, `put`) refuses one that is not a whole number, rather than rounding it, and refuses one that does not fit, rather than cutting it down or answering `nil`. Asking for something that is not there is a bug in the program, and quietly handing back less would hide it.
+- The stash natives name themselves when given something that is not a stash: `stack("text", 1)` is `First argument to stack must be a stash.`
+- Output stays a statement: `spittin` is the only thing that writes to stdout, and no native prints.
+
+```
+hold prices = stash();
+stack(prices, 5);
+stack(prices, 15);
+stack(prices, 20);
+hold total = 0;
+hold i = 0;
+spin (i < size(prices)) {
+  total = total + grab(prices, i);
+  i = i + 1;
+}
+spittin "total: " + sayit(total);
+```
+
+This prints `total: 40`. A `spin` walks a stash by position from `0` up to its size, and
+`sayit` is what lets the number join the string.
 - In the REPL, `spill` reads from the same input as the prompt, so it takes the next line typed.
 
 
