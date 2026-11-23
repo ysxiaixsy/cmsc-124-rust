@@ -1,4 +1,6 @@
-# TrapScript
+<h1 align="center">
+  <img src="images/trapscript-wordmark.svg" alt="TrapScript" width="360">
+</h1>
 
 ## Creators
 
